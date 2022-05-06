@@ -1,0 +1,4 @@
+numpy
+Pillow
+open3d
+qtawesome
