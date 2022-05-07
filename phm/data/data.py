@@ -1,41 +1,40 @@
 
+import re
+import os
 import glob
 import logging
-import os
-import json
-from pathlib import Path
-import re
 import numpy as np
 
+from pathlib import Path
 from functools import lru_cache
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union
 
-def modal_to_image(img : np.ndarray):
-    return ((img - np.min(img)) / (np.max(img) - np.min(img))) * 255.0
+modal_to_image = lambda img : ((img - np.min(img)) / (np.max(img) - np.min(img))) * 255.0
+gray_to_rgb = lambda img : np.stack((img, img, img), axis=2)
 
-__mme_loaders = {}
+__modality_loaders = {}
 
-def mme_loader(name : Union[str, List[str]]):
+def modality_loader(name : Union[str, List[str]]):
     def __embed_func(func):
-        global __mme_loaders
+        global __modality_loaders
         hname = name if isinstance(name, list) else [name]
         for n in hname:
-            __mme_loaders[n] = func
+            __modality_loaders[n] = func
     return __embed_func
 
-def supported_mme_loaders() -> Tuple:
-    return tuple(__mme_loaders.keys())
+def supported_modality_loaders() -> Tuple:
+    return tuple(__modality_loaders.keys())
 
 @lru_cache(maxsize=4)
 def load_entity(file_type : str, file : str):
     if not os.path.isfile(file):
         raise ValueError(f'{file} is invalid!')
 
-    if not file_type in supported_mme_loaders():
+    if not file_type in supported_modality_loaders():
         raise ValueError(f'{file_type} loader does not exist!')
 
-    return __mme_loaders[file_type](file, file_type)
+    return __modality_loaders[file_type](file, file_type)
 
 @dataclass
 class MMERecord:
@@ -60,6 +59,9 @@ class MMEContainer(object):
             for e in entities:
                 self.add_entity(e.type,)
     
+    def add_entity_detailed(self, type : str, file : str, data):
+        self.add_entity_record(MMERecord(data, file, type))
+
     def add_entity(self, type : str, file : str, overwrite : bool = False):
         data = load_entity(type, file)
         entity = MMERecord(
@@ -80,7 +82,15 @@ class MMEContainer(object):
         return self._entities[type]
     
     def get_entities(self):
-        return self._entities.values()
+        return tuple(self._entities.values())
+
+    @property
+    def modality_names(self):
+        return tuple(self._entities.keys()) 
+
+    @property
+    def modalities(self):
+        return tuple(self._entities.values())
 
     def __getitem__(self, type : str) -> Any:
         return self.get_entity(type)
@@ -117,6 +127,24 @@ def save_mme(file : str, record : MMEContainer, file_type : str):
         raise ValueError(f'{file_type} loader does not exist!')
     return __mme_exporters[file_type](file, record, file_type)
 
+__mme_loaders = {}
+
+def mme_loader(name : Union[str, List[str]]):
+    def __embed_func(func):
+        global __mme_loaders
+        hname = name if isinstance(name, list) else [name]
+        for n in hname:
+            __mme_loaders[n] = func
+    return __embed_func
+
+def supported_mme_loaders() -> Tuple:
+    return tuple(__mme_loaders.keys())
+
+def load_mme(file : str, file_type : str):
+    if not file_type in supported_mme_loaders():
+        raise ValueError(f'{file_type} loader does not exist!')
+    return __mme_loaders[file_type](file, file_type)
+
 def create_mme_dataset(
     root_dir : str, 
     file_type : str  
@@ -126,7 +154,7 @@ def create_mme_dataset(
         raise ValueError(f'{root_dir} is an invalid directory path!')
     # Find directories associated with the data types
     sub_folders = {}
-    for dtype in supported_mme_loaders():
+    for dtype in supported_modality_loaders():
         dtype_dir = os.path.join(root_dir, str(dtype))
         if os.path.isdir(dtype_dir):
             sub_folders[dtype] = dtype_dir
