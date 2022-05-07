@@ -1,32 +1,55 @@
 
 import glob
-import json
 import logging
-from multiprocessing.sharedctypes import Value
 import os
+import json
 from pathlib import Path
 import re
-import zipfile
+import numpy as np
 
-from enum import Enum, auto
+from functools import lru_cache
 from dataclasses import dataclass
-from typing import Any, Dict, Union
-from zipfile import ZipFile
-from scipy.io import savemat
+from typing import Any, Dict, List, Tuple, Union
 
-from phm.data.core import MMEntityType, load_entity
+def modal_to_image(img : np.ndarray):
+    return ((img - np.min(img)) / (np.max(img) - np.min(img))) * 255.0
+
+__mme_loaders = {}
+
+def mme_loader(name : Union[str, List[str]]):
+    def __embed_func(func):
+        global __mme_loaders
+        hname = name if isinstance(name, list) else [name]
+        for n in hname:
+            __mme_loaders[n] = func
+    return __embed_func
+
+def supported_mme_loaders() -> Tuple:
+    return tuple(__mme_loaders.keys())
+
+@lru_cache(maxsize=4)
+def load_entity(file_type : str, file : str):
+    if not os.path.isfile(file):
+        raise ValueError(f'{file} is invalid!')
+
+    if not file_type in supported_mme_loaders():
+        raise ValueError(f'{file_type} loader does not exist!')
+
+    return __mme_loaders[file_type](file, file_type)
 
 @dataclass
 class MMERecord:
     data : Any
     file : str
-    type : MMEntityType
+    type : str
 
 class MMEContainer(object):
     def __init__(self, 
+        cid : str = '',
         *entities : MMERecord,
         metadata : Dict = None
     ) -> None:
+        self.container_id = cid
         self._entities = {}
         self._metadata = {}
         # Add the metadata
@@ -37,7 +60,7 @@ class MMEContainer(object):
             for e in entities:
                 self.add_entity(e.type,)
     
-    def add_entity(self, type : MMEntityType, file : str, overwrite : bool = False):
+    def add_entity(self, type : str, file : str, overwrite : bool = False):
         data = load_entity(type, file)
         entity = MMERecord(
             data = data,
@@ -51,7 +74,7 @@ class MMEContainer(object):
             raise ValueError(f'Type {type} already exist!')
         self._entities[entity.type] = entity
 
-    def get_entity(self, type : MMEntityType) -> MMERecord:
+    def get_entity(self, type : str) -> MMERecord:
         if not type in self._entities:
             raise ValueError(f'Type {type} does not exist!')
         return self._entities[type]
@@ -59,10 +82,10 @@ class MMEContainer(object):
     def get_entities(self):
         return self._entities.values()
 
-    def __getitem__(self, type : MMEntityType) -> Any:
+    def __getitem__(self, type : str) -> Any:
         return self.get_entity(type)
     
-    def __setitem__(self, type : MMEntityType, entity : MMERecord):
+    def __setitem__(self, type : str, entity : MMERecord):
         self.add_entity(type, entity, overwrite=False)
 
     def set_metadata(self, key : str, value : Union[int, float, str, bool]):
@@ -76,124 +99,84 @@ class MMEContainer(object):
     def get_metadata(self) -> Dict:
         return self._metadata
 
-class MME_ExportType(Enum):
-    MATLAB_MAT = auto()
-    MME_FILE = auto()
+__mme_exporters = {}
 
-def save_mme(file : str, record : MMEContainer, file_type : MME_ExportType = MME_ExportType.MME_FILE):
-    def __save_as_mme(file : str, record : MMEContainer):
-        if os.path.isfile(file):
-            raise ValueError(f'{file} already exist!')
-        with ZipFile(file, 'w') as zf:
-            # Save metadata
-            zf.writestr('metadata.json', json.dumps(record.get_metadata(), indent = 4))
-            # Save Lookup
-            entities = record.get_entities()
-            lookup = ''
-            for e in entities:
-                key = str(e.type)
-                fname = os.path.basename(e.file)
-                lookup += f'{key}={fname}\n'
-                # Write files
-                zf.write(e.file, os.path.basename(fname), compress_type=zipfile.ZIP_DEFLATED)
-            # Save lookup file
-            zf.writestr('lookup.info', lookup)
+def mme_exporter(name : Union[str, List[str]]):
+    def __embed_func(func):
+        global __mme_exporters
+        hname = name if isinstance(name, list) else [name]
+        for n in hname:
+            __mme_exporters[n] = func
+    return __embed_func
 
-    def __save_as_mat(file : str, record : MMEContainer):
-        if os.path.isfile(file):
-            raise ValueError(f'{file} already exist!')
+def supported_mme_exporters() -> Tuple:
+    return tuple(__mme_exporters.keys())
 
-        lookup = {}
-        data = {}
-        for e in record.get_entities():
-            fname = os.path.basename(e.file)
-            lookup[str(e.type)] = fname
-            data[str(e.type)] = e.data
-        
-        mat = {
-            'metadata' : record.get_metadata(),
-            'lookup' : lookup,
-            'data' : data
-        }
-        savemat(file, mat, do_compression=True)
-    
-    {
-        MME_ExportType.MATLAB_MAT: __save_as_mat,
-        MME_ExportType.MME_FILE : __save_as_mme
-    }[file_type](file, record)
+def save_mme(file : str, record : MMEContainer, file_type : str):
+    if not file_type in supported_mme_exporters():
+        raise ValueError(f'{file_type} loader does not exist!')
+    return __mme_exporters[file_type](file, record, file_type)
 
-class VTD_DatasetLoader(object):
+def create_mme_dataset(
+    root_dir : str, 
+    file_type : str  
+):
+    # Check the validity of root directory
+    if root_dir is None or not os.path.isdir(root_dir):
+        raise ValueError(f'{root_dir} is an invalid directory path!')
+    # Find directories associated with the data types
+    sub_folders = {}
+    for dtype in supported_mme_loaders():
+        dtype_dir = os.path.join(root_dir, str(dtype))
+        if os.path.isdir(dtype_dir):
+            sub_folders[dtype] = dtype_dir
 
-    __thermal_dir__ = 'thermal'
-    __visible_dir__ = 'visible'
-    __depth_dir__ = 'depth'
-
-    def __init__(self, root_dir : str) -> None:
-        self._rootdir = root_dir
-        self.init()
-
-    @property
-    def multimodal_dir(self) -> str:
-        return self._rootdir
-    
-    def init(self) -> None:
-        # Check the validity of directory
-        if self._rootdir is None or not os.path.isdir(self._rootdir):
-            raise ValueError(f'{self._rootdir} is an invalid directory path!')
-        # dir_list = [os.path.join(self._rootdir, dname) for dname in os.listdir(self._rootdir) if os.path.isdir(self._rootdir)]
-        self._thermal_dir = os.path.join(self._rootdir, self.__thermal_dir__)
-        if not os.path.isdir(self._thermal_dir):
-            raise ValueError('Thermal directory does not exist!')
-        self._visible_dir = os.path.join(self._rootdir, self.__visible_dir__)
-        if not os.path.isdir(self._visible_dir):
-            raise ValueError('Visible directory does not exist!')
-        self._depth_dir = os.path.join(self._rootdir, self.__depth_dir__)
-        if not os.path.isdir(self._depth_dir):
-            raise ValueError('Depth directory does not exist!')
-
-    def generate_mme(self, file_type : MME_ExportType = MME_ExportType.MME_FILE):
-        vfiles = glob.glob(os.path.join(self._visible_dir, '*.png'))
-        vfiles.sort(key=os.path.getmtime)
-
-        # Create the result directory
-        res_dir = None
-        file_extension = None
-        if file_type == MME_ExportType.MME_FILE:
-            res_dir = os.path.join(self._rootdir, 'mme')
-            file_extension = 'mme'
-        elif file_type == MME_ExportType.MATLAB_MAT:
-            res_dir = os.path.join(self._rootdir, 'mat')
-            file_extension = 'mat'
-        else:
-            raise ValueError(f'{file_type} does not supported!')
-
-        Path(res_dir).mkdir(parents=True, exist_ok=True)
-
-        for vf in vfiles:
-            fname = os.path.basename(vf)
-            ptn = re.findall('\d{12}\d+', fname)
-            if not ptn:
-                logging.warning(f'{fname} does not follow the supported naming!')
+    if not sub_folders:
+        raise ValueError('No supported modalities has been found!')
+    existing_types = tuple(sub_folders.keys())
+    # Create the result directory
+    res_dir = os.path.join(root_dir, file_type)
+    file_extension = file_type
+    Path(res_dir).mkdir(parents=True, exist_ok=True)
+    # List all visible images
+    if not 'visible' in existing_types:
+        raise ValueError('Visible modality does not found!')
+    vfiles = glob.glob(os.path.join(sub_folders['visible'], '*.png'))
+    vfiles.sort(key=os.path.getmtime)
+    # Extract file ids
+    # file_ids = [re.findall('\d{12}\d+', os.path.basename(x))[0] for x in vfiles]
+    file_ids = []
+    for x in vfiles:
+        fname = os.path.basename(x)
+        ptn = re.findall('\d{12}\d+', fname)
+        if not ptn:
+            logging.warning(f'{fname} does not follow the supported naming!')
+            continue
+        file_ids.append(ptn[0])
+    # Generate the files
+    matched = 0
+    for ptn in file_ids:
+        container = MMEContainer(cid=ptn)
+        # Check if find all modalities
+        modalities = {}
+        for (dtype, dfolder) in sub_folders.items():
+            fname = f'{str(dtype)}_{ptn}.png'
+            full_path = os.path.join(dfolder, fname)
+            if not os.path.isfile(full_path):
+                # logging.warning(f'{fname} does not exist!')
                 continue
-            ptn = ptn[0]
-            
-            tfname = f'thermal_{ptn}.png'
-            dfname = f'depth_{ptn}.png'
-            tf = os.path.join(self._thermal_dir, tfname)
-            df = os.path.join(self._depth_dir, dfname)
-            if not os.path.isfile(tf) or not os.path.isfile(df):
-                logging.warning(f'{tfname} or {dfname} does not exist!')
-                continue
-            
-            container = MMEContainer()
-            container.add_entity(MMEntityType.Visible, vf)
-            container.add_entity(MMEntityType.Thermal, tf)
-            container.add_entity(MMEntityType.DepthMap, df)
+            modalities[dtype] = full_path
 
+        if len(modalities) == len(existing_types):
+            matched += 1        
+            # Add modalities to the container
+            for (dtype, fpath) in modalities.items():
+                container.add_entity(dtype, fpath)
+            # Save the container
             save_mme(
-                os.path.join(res_dir, f'{ptn}.{file_extension}'),
+                os.path.join(res_dir, f'mme_{ptn}.{file_extension}'),
                 record=container,
                 file_type=file_type
             )
 
-            
+    print(f'Total : {len(file_ids)}, Matched : {matched}')

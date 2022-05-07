@@ -2,3 +2,4 @@
 phm/data/__pycache__/*
 phm/__pycache__/*
 phm/control_point_new.py
+system.log

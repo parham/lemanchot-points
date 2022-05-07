@@ -3,7 +3,9 @@
 
 import sys, os
 import qtawesome as qta
+import numpy as np
 
+from typing import List
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -11,6 +13,17 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
+
+def cp_to_opencv(cps : List):
+    source = np.zeros((len(cps), 2))
+    dest = np.zeros((len(cps), 2))
+    for index in range(len(cps)):
+        p = cps[index]
+        source[index, 0] = p['img1_x']
+        source[index, 1] = p['img1_y']
+        dest[index, 0] = p['img2_x']
+        dest[index, 1] = p['img2_y']
+    return source, dest
 
 def cpselect(img_1, img_2):
     """
@@ -31,13 +44,13 @@ def cpselect(img_1, img_2):
     cps.raise_()
     app.exec_()
 
-    dictlist = []
+    points = []
     for cp in cps.wp.canvas.CPlist:
-        dictlist.append(cp.getdict)
+        points.append(cp.getdict)
 
     del img1, img2
 
-    return dictlist
+    return points
 
 class _MainWindow(QMainWindow):
     def __init__(self):

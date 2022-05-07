@@ -1,2 +1,3 @@
 
-import phm.data
+from .control_point import *
+from .data import *

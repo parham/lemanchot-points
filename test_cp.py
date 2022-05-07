@@ -8,11 +8,13 @@ import numpy as np
 from phm.control_point import cpselect
 from PIL import Image
 
+from phm.process import data_fusion_cps
+
 img1 = Image.open("/home/phm/Datasets/multi-modal/20210706_multi_modal/visible/visible_1625604430816.png")
 img2 = Image.open("/home/phm/Datasets/multi-modal/20210706_multi_modal/thermal/thermal_1625604430816.png")
 
 img1 = np.asarray(img1)
 img2 = np.asarray(img2)
 
-cps = cpselect(img1, img2)
-print(cps)
+data_fusion_cps(img1, img2)
+
