@@ -52,11 +52,13 @@ def show_rgbdt(data : RGBDnT):
     
     plt.show()
 
-def blend_vt(data : RGBDnT):
+def blend_vt(data : RGBDnT, alpha : float = 0.6):
     thermal_rgb = gray_to_rgb(data.thermal)
-    fused = data.visible.copy()
-    fused[thermal_rgb > 0] = thermal_rgb[thermal_rgb > 0]
-    return fused
+    fused = (data.visible.copy()).astype(np.float)
+    ttemp = thermal_rgb * alpha
+    vtemp = data.visible * (1 - alpha)
+    fused[thermal_rgb > 0] = vtemp[thermal_rgb > 0] + ttemp[thermal_rgb > 0]
+    return modal_to_image(fused)
 
 class VTD_Alignment:
     __thermal__ = 'thermal'
