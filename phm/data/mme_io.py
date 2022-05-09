@@ -19,7 +19,7 @@ def save_as_mme(file : str, record : MMEContainer, file_type : str):
             fname = os.path.basename(e.file)
             lookup += f'{key}={fname}\n'
             # Write files
-            zf.write(e.file, os.path.basename(fname), compress_type=ZIP_DEFLATED)
+            zf.write(e.file, arcname=f'{e.type}.png', compress_type=ZIP_DEFLATED)
         # Save lookup file
         zf.writestr('lookup.inf', lookup)
 

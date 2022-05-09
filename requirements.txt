@@ -1,5 +1,6 @@
 numpy
 Pillow
 open3d
-PyQt5
+PyQt5==5.11.3
 qtawesome
+opencv-contrib-python

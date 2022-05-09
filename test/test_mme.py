@@ -28,23 +28,22 @@ class Test_MME_Record(unittest.TestCase):
         })
         container.add_entity(
             type='visible',
-            file='/home/phm/Datasets/multi-modal/20210706_multi_modal/visible/visible_1625604430816.png'
+            file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/visible/visible_1625604430816.png'
         )
         container.add_entity(
             type='thermal',
-            file='/home/phm/Datasets/multi-modal/20210706_multi_modal/thermal/thermal_1625604430816.png'
+            file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/thermal/thermal_1625604430816.png'
         )
         container.add_entity(
             type='depth',
-            file='/home/phm/Datasets/multi-modal/20210706_multi_modal/depth/depth_1625604430816.png'
+            file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/depth/depth_1625604430816.png'
         )
 
-        save_mme('/home/phm/Datasets/multi-modal/20210706_multi_modal/test.mme', container, file_type='mme')
-        save_mme('/home/phm/Datasets/multi-modal/20210706_multi_modal/test.mat', container, file_type='mat')
+        save_mme('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/test.mme', container, file_type='mme')
+        save_mme('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/test.mat', container, file_type='mat')
     
     def test_create_dataset(self):
-        # dir = '/home/phm/Datasets/multi-modal/20210722_pipe_noheating'
-        dir = '/home/phm/Datasets/multi-modal/20210706_multi_modal'
+        dir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal'
         create_mme_dataset(root_dir=dir, file_type='mme')
         create_mme_dataset(root_dir=dir, file_type='mat')
 

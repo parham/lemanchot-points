@@ -115,7 +115,7 @@ class VTD_Alignment:
         self._depth_params = dconfig
         return True
 
-    def _init(self, data : MMEContainer):
+    def __init(self, data : MMEContainer):
         if self._homography is not None:
             return
         # STEP 01 : Run control point selector toolbox
@@ -126,13 +126,13 @@ class VTD_Alignment:
         self._homography = h
         self.save()
 
-    def __compute_rgbdt(self, data : MMEContainer):
+    def packing_rgbdt(self, data : MMEContainer):
         if not self.__thermal__ in data.modality_names or \
            not self.__visible__ in data.modality_names or \
            not self.__depth__ in data.modality_names:
             raise ValueError(f'Data container does not have {self._src_type} or {self._dsc_type}')
         # Check homography availability
-        self._init(data)
+        self.__init(data)
         # Corrent the thermal image
         thermal = modal_to_image(data[self.__thermal__].data)
         visible = data[self.__visible__].data
@@ -198,7 +198,7 @@ class VTD_Alignment:
 
     def compute(self, data : MMEContainer):
         # Create the RGBD&T data
-        rgbdt = self.__compute_rgbdt(data)
+        rgbdt = self.packing_rgbdt  (data)
         # Create the o3d objects
         rgbdt = self.__generate_o3d(rgbdt)
         return rgbdt
