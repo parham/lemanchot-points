@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from PIL import Image
 
 from phm.data import load_mme
-from phm.process_vtd import VTD_Alignment, blend_vt, show_rgbdt
+from phm.process_vtd import VTD_Alignment, VTD_Alignment_O3D, blend_vt, show_modalities_grid
 
 class Test_VTD(unittest.TestCase):
     def test_compute_rgbdt(self):
@@ -21,8 +21,8 @@ class Test_VTD(unittest.TestCase):
         )
         vtd.load()
 
-        rgbdt = vtd.packing_rgbdt(data)
-        show_rgbdt(rgbdt)
+        rgbdt = vtd.pack(data)
+        show_modalities_grid(rgbdt)
 
         # Blend
         fused = blend_vt(rgbdt, 0.85)
@@ -32,13 +32,13 @@ class Test_VTD(unittest.TestCase):
 
     def test_compute_o3d(self):
         data = load_mme('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/mat/mme_1625604430816.mat', 'mat')
-        vtd = VTD_Alignment(
+        vtd = VTD_Alignment_O3D(
             target_dir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/',
             depth_param_file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/depth/camera_info.json'
         )
         vtd.load()
-        rgbdt = vtd.compute_o3d(data)
-        o3d.visualization.draw_geometries([rgbdt.pcs_visible, rgbdt.pcs_thermal])
+        rgbdt = vtd.compute(data)
+        o3d.visualization.draw_geometries([rgbdt.pcs_visible])
 
     def test_compute_np(self):
         data = load_mme('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/mat/mme_1625604430816.mat', 'mat')
@@ -47,7 +47,7 @@ class Test_VTD(unittest.TestCase):
             depth_param_file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/depth/camera_info.json'
         )
         vtd.load()
-        rgbdt = vtd.compute_numpy(data)
+        rgbdt = vtd.compute(data)
         
 
 if __name__ == '__main__':

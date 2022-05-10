@@ -22,6 +22,13 @@ class RGBDnT:
     thermal : np.ndarray
     depth : np.ndarray
     homography : np.ndarray
+    rgbdt : np.ndarray = None # channels : X Y Z R G B & T
+
+    def list_modalities(self):
+        return (self.visible, self.thermal, self.depth)
+
+@dataclass
+class RGBDnT_O3D(RGBDnT):
     # O3D entities
     o3d_visible : o3d.geometry.Image = None
     o3d_thermal : o3d.geometry.Image = None
@@ -32,10 +39,19 @@ class RGBDnT:
     pcs_visible : o3d.geometry.PointCloud = None
     pcs_thermal : o3d.geometry.PointCloud = None
 
-    def list_modalities(self):
-        return (self.visible, self.thermal, self.depth)
+    def list_o3d_modalities(self):
+        return (self.o3d_visible, self.o3d_thermal, self.o3d_depth)
 
-def show_rgbdt(data : RGBDnT):
+    @staticmethod
+    def pack(data : RGBDnT):
+        return RGBDnT_O3D(
+            data.visible, 
+            data.thermal, 
+            data.depth, 
+            homography=data.homography
+        )
+
+def show_modalities_grid(data : RGBDnT):
     import numpy as np
     import matplotlib.pyplot as plt
 
@@ -54,10 +70,11 @@ def show_rgbdt(data : RGBDnT):
 
 def blend_vt(data : RGBDnT, alpha : float = 0.6):
     thermal_rgb = gray_to_rgb(data.thermal)
-    fused = (data.visible.copy()).astype(np.float)
+    fused = (data.visible.copy()).astype(np.float64)
     ttemp = thermal_rgb * alpha
     vtemp = data.visible * (1 - alpha)
     fused[thermal_rgb > 0] = vtemp[thermal_rgb > 0] + ttemp[thermal_rgb > 0]
+
     return modal_to_image(fused)
 
 class VTD_Alignment:
@@ -99,7 +116,7 @@ class VTD_Alignment:
             self.__homography__ : self.homography
         }
         savemat(self.homography_file, mat, do_compression=True)
-    
+
     def load(self) -> bool:
         if self.homography_file is None or not os.path.isfile(self.homography_file):
             return False
@@ -128,7 +145,7 @@ class VTD_Alignment:
         self._homography = h
         self.save()
 
-    def packing_rgbdt(self, data : MMEContainer):
+    def pack(self, data : MMEContainer) -> RGBDnT:
         if not self.__thermal__ in data.modality_names or \
            not self.__visible__ in data.modality_names or \
            not self.__depth__ in data.modality_names:
@@ -144,7 +161,10 @@ class VTD_Alignment:
         
         return RGBDnT(visible, corrected_thermal, depth, self._homography)
 
-    def __generate_numpy(self, data : RGBDnT):
+    def compute(self, data : MMEContainer):
+        return self.fuse(self.pack(data))
+
+    def fuse(self, data : RGBDnT):
         visible = data.visible
         thermal = data.thermal
         depth = data.depth
@@ -154,8 +174,8 @@ class VTD_Alignment:
         #     [ 0    0   1  ] 
         # 
         # P = d * [(x - p_x) / f_x , (y - p_y) / f_y, 1]^-1
-        width, height = depth.shape
-        
+        height, width = depth.shape
+
         X = np.linspace(0, width-1, width)
         Y = np.linspace(0, height-1, height)
         X, Y = np.meshgrid(X, Y)
@@ -168,10 +188,23 @@ class VTD_Alignment:
         Z = depth / 1000
         X = np.multiply(Z, (X - p_x) / f_x)
         Y = np.multiply(Z, (Y - p_y) / f_y)
+        
+        data.rgbdt =  np.dstack((X,Y,Z, gray_to_rgb(visible), thermal))
+        return data
 
-        rgbdt = np.vstack((X,Y,Z))
+class VTD_Alignment_O3D(VTD_Alignment):
 
-    def __generate_o3d(self, data : RGBDnT):
+    def __init__(self, target_dir: str = None, depth_param_file: str = None) -> None:
+        super().__init__(target_dir, depth_param_file)
+
+    def compute(self, data : MMEContainer):
+        return self.fuse(
+            RGBDnT_O3D.pack(self.pack(data))
+        )
+
+    def fuse(self, data : RGBDnT):
+        data = VTD_Alignment.fuse(self, data)
+
         visible = data.visible
         thermal = data.thermal
         depth = data.depth
@@ -185,18 +218,17 @@ class VTD_Alignment:
         Image.fromarray(visible).save(vis_file)
         Image.fromarray(gray_to_rgb(thermal.astype(np.uint8))).save(th_file)
         Image.fromarray(depth).save(dp_file)
-        
+        # Read the temporary image files
         data.o3d_visible = o3d.io.read_image(vis_file)
         data.o3d_thermal = o3d.io.read_image(th_file)
         data.o3d_depth = o3d.io.read_image(dp_file)
- 
+        # Form the RGBDnT images
         data.rgbd_visible = o3d.geometry.RGBDImage.create_from_color_and_depth(
             data.o3d_visible, data.o3d_depth,
             depth_scale=1000.0, depth_trunc=5.0)
         data.rgbd_thermal = o3d.geometry.RGBDImage.create_from_color_and_depth(
             data.o3d_thermal, data.o3d_depth,
             depth_scale=1000.0, depth_trunc=5.0)
-        
         # Form the Pinhole Camera parameters
         f_x = self._depth_params['K'][0]
         p_x = self._depth_params['K'][2]
@@ -208,7 +240,6 @@ class VTD_Alignment:
             fx = f_x, fy = f_y,
             cx = p_x, cy = p_y
         )
-
         #     [ fx   0   cx ] 
         # K = [ 0    fy  cy ] 
         #     [ 0    0   1  ] 
@@ -222,19 +253,8 @@ class VTD_Alignment:
             data.rgbd_thermal, 
             intrinsic=data.pinhole_depth_params
         )
-
+        # Delete the temporary image files
+        os.unlink(vis_file)
+        os.unlink(th_file)
+        os.unlink(dp_file)
         return data
-
-    def compute_o3d(self, data : MMEContainer):
-        # Create the RGBD&T data
-        rgbdt = self.packing_rgbdt  (data)
-        # Create the o3d objects
-        rgbdt = self.__generate_o3d(rgbdt)
-        return rgbdt
-
-    def compute_numpy(self, data : MMEContainer):
-        # Create the RGBD&T data
-        rgbdt = self.packing_rgbdt  (data)
-        # Create the objects
-        rgbdt = self.__generate_numpy(rgbdt)
-        return rgbdt
