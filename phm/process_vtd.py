@@ -144,6 +144,33 @@ class VTD_Alignment:
         
         return RGBDnT(visible, corrected_thermal, depth, self._homography)
 
+    def __generate_numpy(self, data : RGBDnT):
+        visible = data.visible
+        thermal = data.thermal
+        depth = data.depth
+        # Form the point cloud
+        #     [ fx   0   cx ] 
+        # K = [ 0    fy  cy ] 
+        #     [ 0    0   1  ] 
+        # 
+        # P = d * [(x - p_x) / f_x , (y - p_y) / f_y, 1]^-1
+        width, height = depth.shape
+        
+        X = np.linspace(0, width-1, width)
+        Y = np.linspace(0, height-1, height)
+        X, Y = np.meshgrid(X, Y)
+        # Form the Pinhole Camera parameters
+        f_x = self._depth_params['K'][0]
+        p_x = self._depth_params['K'][2]
+        f_y = self._depth_params['K'][4]
+        p_y = self._depth_params['K'][5]
+        # Correct the coordinates
+        Z = depth / 1000
+        X = np.multiply(Z, (X - p_x) / f_x)
+        Y = np.multiply(Z, (Y - p_y) / f_y)
+
+        rgbdt = np.vstack((X,Y,Z))
+
     def __generate_o3d(self, data : RGBDnT):
         visible = data.visible
         thermal = data.thermal
@@ -198,9 +225,16 @@ class VTD_Alignment:
 
         return data
 
-    def compute(self, data : MMEContainer):
+    def compute_o3d(self, data : MMEContainer):
         # Create the RGBD&T data
         rgbdt = self.packing_rgbdt  (data)
         # Create the o3d objects
         rgbdt = self.__generate_o3d(rgbdt)
+        return rgbdt
+
+    def compute_numpy(self, data : MMEContainer):
+        # Create the RGBD&T data
+        rgbdt = self.packing_rgbdt  (data)
+        # Create the objects
+        rgbdt = self.__generate_numpy(rgbdt)
         return rgbdt
