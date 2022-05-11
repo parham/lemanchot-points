@@ -2,15 +2,17 @@
 import numpy as np
 import open3d as o3d
 
+from typing import List
 from dataclasses import dataclass
 
 @dataclass
 class RGBDnT:
-    visible : np.ndarray
-    thermal : np.ndarray
-    depth : np.ndarray
-    homography : np.ndarray
+    visible : np.ndarray = None
+    thermal : np.ndarray = None
+    depth : np.ndarray = None
+    homography : np.ndarray = None
     rgbdt : np.ndarray = None # channels : X Y Z R G B & T
+    point_cloud : List = None
 
     def list_modalities(self):
         return (self.visible, self.thermal, self.depth)

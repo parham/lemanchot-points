@@ -127,6 +127,17 @@ class VTD_Alignment:
     def compute(self, data : MMEContainer):
         return self.fuse(self.pack(data))
 
+    def __rgbdt_to_array3d(self, data : np.ndarray):
+        height, width, channel = data.shape
+        data = data.reshape((height * width), channel)
+        vertex_list = [tuple(x.tolist()) for x in data]
+        return np.array(vertex_list, 
+            dtype=[
+                ('x', 'f4'), ('y', 'f4'), ('z', 'f4'), # position
+                ('red', 'u1'), ('green', 'u1'), ('blue', 'u1'), # color
+                ('thermal', 'u1') # thermal
+            ])
+
     def fuse(self, data : RGBDnT):
         visible = data.visible
         thermal = data.thermal
@@ -153,6 +164,7 @@ class VTD_Alignment:
         Y = np.multiply(Z, (Y - p_y) / f_y)
         
         data.rgbdt =  np.dstack((X,Y,Z, gray_to_rgb(visible), thermal))
+        data.point_cloud = self.__rgbdt_to_array3d(data.rgbdt)
         return data
 
 class VTD_Alignment_O3D(VTD_Alignment):
