@@ -3,14 +3,15 @@ import unittest
 import sys,os
 import open3d as o3d
 
+from PIL import Image
+
+
 sys.path.append(os.getcwd())
 sys.path.append(__file__)
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from PIL import Image
-
-from phm.data import load_mme
-from phm.process_vtd import VTD_Alignment, VTD_Alignment_O3D, blend_vt, show_modalities_grid
+from phm.io import load_mme, rgbdt_to_array3d
+from phm.vtd import VTD_Alignment, VTD_Alignment_O3D, blend_vt, show_modalities_grid
 
 class Test_VTD(unittest.TestCase):
     def test_compute_rgbdt(self):
@@ -48,6 +49,8 @@ class Test_VTD(unittest.TestCase):
         )
         vtd.load()
         rgbdt = vtd.compute(data)
+        vnd = rgbdt_to_array3d(rgbdt.rgbdt)
+        print(vnd)
         
 
 if __name__ == '__main__':
