@@ -1,3 +1,9 @@
 
-from .control_point import *
+__all__ = [
+    'data', 'io'
+]
+
 from .data import *
+from .io import *
+from .control_point import *
+from .dataset import *

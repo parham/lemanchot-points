@@ -1,10 +1,53 @@
 
+import re
 import os
 import json
+import logging
+import glob
 
+from pathlib import Path
+from typing import List, Tuple, Union
 from scipy.io import savemat, loadmat
 from zipfile import ZipFile, ZIP_DEFLATED
-from phm.data.data import MMEContainer, MMERecord, mme_exporter, mme_loader, supported_mme_loaders, supported_modality_loaders
+
+from phm.data import MMEContainer, MMERecord
+from phm.io.modality import load_entity, supported_modality_loaders
+
+__mme_exporters = {}
+
+def mme_exporter(name : Union[str, List[str]]):
+    def __embed_func(func):
+        global __mme_exporters
+        hname = name if isinstance(name, list) else [name]
+        for n in hname:
+            __mme_exporters[n] = func
+    return __embed_func
+
+def supported_mme_exporters() -> Tuple:
+    return tuple(__mme_exporters.keys())
+
+def save_mme(file : str, record : MMEContainer, file_type : str):
+    if not file_type in supported_mme_exporters():
+        raise ValueError(f'{file_type} loader does not exist!')
+    return __mme_exporters[file_type](file, record, file_type)
+
+__mme_loaders = {}
+
+def mme_loader(name : Union[str, List[str]]):
+    def __embed_func(func):
+        global __mme_loaders
+        hname = name if isinstance(name, list) else [name]
+        for n in hname:
+            __mme_loaders[n] = func
+    return __embed_func
+
+def supported_mme_loaders() -> Tuple:
+    return tuple(__mme_loaders.keys())
+
+def load_mme(file : str, file_type : str):
+    if not file_type in supported_mme_loaders():
+        raise ValueError(f'{file_type} loader does not exist!')
+    return __mme_loaders[file_type](file, file_type)
 
 @mme_exporter('mme')
 def save_as_mme(file : str, record : MMEContainer, file_type : str):    
@@ -25,7 +68,7 @@ def save_as_mme(file : str, record : MMEContainer, file_type : str):
 
 @mme_loader('mme')
 def load_mme_file(file : str, file_type : str):
-    pass
+    raise NotImplementedError()
 
 @mme_exporter('mat')
 def save_as_mat(file : str, record : MMEContainer, file_type : str):
@@ -59,5 +102,9 @@ def load_mat_file(file : str, file_type : str):
         if not dtype in data:
             continue
         dt = data[dtype]
-        obj.add_entity_record(MMERecord(dt, f'{dtype}.png', dtype))
+        obj.add_entity(MMERecord(
+            file=f'{dtype}.png',
+            data=dt,
+            type=dtype
+        ))
     return obj
