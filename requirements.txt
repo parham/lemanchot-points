@@ -5,3 +5,4 @@ PyQt5==5.11.3
 qtawesome
 opencv-contrib-python
 plyfile
+DotMap
