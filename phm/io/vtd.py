@@ -1,19 +1,39 @@
 
+import glob
 import os
+from pathlib import Path
 import numpy as np
 
 from plyfile import PlyData, PlyElement, make2d, PlyHeaderParseError, PlyElementParseError, PlyProperty
 
 from typing import List, Tuple, Union
-from scipy.io import savemat
+from scipy.io import savemat, loadmat
 from phm.data import RGBDnT
+from phm.vtd import rgbdt_to_array3d
+
+__rgbdt__ = 'rgbdt'
 
 def save_RGBDnT(file : str, data : RGBDnT):
-    if not os.path.isfile(file):
-        raise FileNotFoundError(f'{file} not found.')
     if data.rgbdt is None:
         raise ValueError('RGBDT data is missing or corrupted!')
-    savemat(file, {'rgbdt' : data}, do_compression=True)
+    savemat(file, {__rgbdt__ : data.rgbdt}, do_compression=True)
+
+def load_RGBDnT(file : str) -> RGBDnT:
+    if not os.path.isfile(file):
+        raise FileNotFoundError(f'{file} not found.')
+    
+    obj = loadmat(file)
+    if not __rgbdt__ in obj:
+        raise ValueError('RGBD&T file is not valid!')
+    rgbdt = obj[__rgbdt__]
+
+    return RGBDnT(
+        visible=rgbdt[:,:,3:5],
+        thermal=rgbdt[:,:,6],
+        depth=rgbdt[:,:,2],
+        rgbdt=rgbdt,
+        point_cloud=rgbdt_to_array3d(rgbdt)
+    )
 
 __pcloud_exporters = {}
 
