@@ -16,12 +16,12 @@
 </p>
 
 ## TODO
-- [ ] Data Acquisition and Preparation
-- [ ] Implement the method for generating RGBD&T data (automated fusion and alignment)
+- [X] Data Acquisition and Preparation
+- [X] Implement the method for generating RGBD&T data (automated fusion and alignment)
   - [ ] Align thermal and visible images:
-      - [ ] Using control points
+      - [X] Using control points
       - [ ] Using board
-- [ ] Implement the method for converting RGBD&T to multi-channel point cloud
+- [X] Implement the method for converting RGBD&T to multi-channel point cloud
 - [ ] Implement the visualization method for the point cloud.
 - [ ] Implement the multi-point cloud registration method using maybe ICP or similar methods!
 - [ ] Implement the system visualization.
