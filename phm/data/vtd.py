@@ -38,6 +38,28 @@ class RGBDnT:
                 ('red', 'u1'), ('green', 'u1'), ('blue', 'u1'), # color
                 ('thermal', 'u1') # thermal
             ])
+    
+    @property
+    def visible_point_cloud(self):
+        height, width, channel = self.data.shape
+        tmp = self.data.reshape((height * width), channel)
+        vertex_list = [tuple(x[:-1].tolist()) for x in tmp]
+        return np.array(vertex_list, 
+            dtype=[
+                ('x', 'f4'), ('y', 'f4'), ('z', 'f4'), # position
+                ('red', 'u1'), ('green', 'u1'), ('blue', 'u1')
+            ])
+    
+    @property
+    def thermal_point_cloud(self):
+        height, width, channel = self.data.shape
+        tmp = self.data.reshape((height * width), channel)
+        vertex_list = [tuple(x[(0,1,2,-1)].tolist()) for x in tmp]
+        return np.array(vertex_list, 
+            dtype=[
+                ('x', 'f4'), ('y', 'f4'), ('z', 'f4'), # position
+                ('thermal', 'u1') # thermal
+            ])
 
     def _convert_img_o3d(self, img : np.ndarray, fname : str):
         temp_dir = os.path.join(os.getcwd(),'tmp')
