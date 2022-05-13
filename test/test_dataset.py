@@ -3,16 +3,15 @@ import os
 import sys
 import unittest
 
-
 sys.path.append(os.getcwd())
 sys.path.append(__file__)
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from phm.io import load_mme, load_RGBDnT
-from phm.dataset import Dataset_LoadableFunc, VTD_Dataset, create_point_cloud_dataset, create_vtd_dataset
+from phm.io import load_mme, load_point_cloud
+from phm.dataset import Dataset_LoadableFunc, VTD_Dataset, create_mme_dataset, create_point_cloud_dataset, create_vtd_dataset
 
 class Test_Dataset(unittest.TestCase):
-    def test_mat_dataset(self):
+    def test_load_mme_mat_dataset(self):
         dataset = Dataset_LoadableFunc(
             '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/mat',
             'mat',
@@ -21,7 +20,6 @@ class Test_Dataset(unittest.TestCase):
         print(f'Number of Samples : {len(dataset)}')
         counter = 0
         for x in dataset:
-            print(x)
             counter += 1
     
     def test_load_vtd_dataset(self):
@@ -31,8 +29,14 @@ class Test_Dataset(unittest.TestCase):
         print(f'Number of Samples : {len(dataset)}')
         counter = 0
         for x in dataset:
-            print(x)
             counter += 1
+
+    def test_load_point_cloud(self):
+        dataset = Dataset_LoadableFunc(
+            '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/pc',
+            'ply_text',
+            load_point_cloud
+        )
 
     def test_create_vtd_dataset(self):
         create_vtd_dataset(
@@ -48,6 +52,11 @@ class Test_Dataset(unittest.TestCase):
             target_dir='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/pc',
             file_type='ply_txt'
         )
+
+    def test_create_dataset(self):
+        dir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal'
+        create_mme_dataset(root_dir=dir, file_type='mme')
+        create_mme_dataset(root_dir=dir, file_type='mat')
 
 if __name__ == '__main__':
     unittest.main()

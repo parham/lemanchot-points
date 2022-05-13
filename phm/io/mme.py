@@ -11,7 +11,7 @@ from scipy.io import savemat, loadmat
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from phm.data import MMEContainer, MMERecord
-from phm.io.modality import load_entity, supported_modality_loaders
+from phm.io.modality import supported_modality_loaders
 
 __mme_exporters = {}
 

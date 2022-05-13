@@ -5,14 +5,14 @@ import json
 import numpy as np
 import open3d as o3d
 
-from PIL import Image
 from typing import List
-from pathlib import Path
 from scipy.io import savemat, loadmat
 
 from phm.utils import gray_to_rgb, modal_to_image
 from phm.control_point import cpselect
-from phm.data import MMEContainer, RGBDnT, RGBDnT_O3D
+from phm.data import MMEContainer, RGBDnT
+
+__homography__ = 'homography'
 
 def rgbdt_to_array3d(data : np.ndarray):
     height, width, channel = data.shape
@@ -25,11 +25,36 @@ def rgbdt_to_array3d(data : np.ndarray):
             ('thermal', 'u1') # thermal
         ])
 
+def load_depth_camera_params(file : str):
+    if file is None or not os.path.isfile(file):
+        raise FileNotFoundError(f'{file} does not exist!')
+    dconfig = None
+    with open(file) as fdc:
+        dconfig = json.load(fdc)
+    return dconfig
+
+def load_homography(file : str, silent : bool = False):
+    if file is None or not os.path.isfile(file):
+        if not silent:
+            raise FileNotFoundError(f'{file} does not exist!')
+        else:
+            return
+    # Load Homography
+    d = loadmat(file)
+    if not __homography__ in d and d[__homography__] is not None:
+        raise ValueError('Homography file is not valid!')
+    return d[__homography__]
+
+def save_homography(file : str, homography : np.ndarray):
+    mat = {
+        __homography__ : homography
+    }
+    savemat(file, mat, do_compression=True)
+
 class VTD_Alignment:
     __thermal__ = 'thermal'
     __visible__ = 'visible'
     __depth__ = 'depth'
-    __homography__ = 'homography'
 
     def __init__(self, 
         target_dir : str = None,
@@ -44,6 +69,24 @@ class VTD_Alignment:
     @property
     def homography(self):
         return self._homography
+
+    @property
+    def depth_camera_params(self):
+        return self._depth_params
+
+    @property
+    def pinhole_camera(self) -> o3d.camera.PinholeCameraIntrinsic:
+        dparam = self.depth_camera_params
+        f_x = dparam['K'][0]
+        p_x = dparam['K'][2]
+        f_y = dparam['K'][4]
+        p_y = dparam['K'][5]
+        return o3d.camera.PinholeCameraIntrinsic(
+            width=dparam['width'], 
+            height=dparam['height'],
+            fx = f_x, fy = f_y,
+            cx = p_x, cy = p_y
+        )
 
     def cp_to_opencv(self, cps : List):
         source = np.zeros((len(cps), 2))
@@ -60,27 +103,14 @@ class VTD_Alignment:
         self._homography = None
 
     def save(self):
-        mat = {
-            self.__homography__ : self.homography
-        }
-        savemat(self.homography_file, mat, do_compression=True)
+        # Save homography
+        save_homography(self.homography_file, self.homography)
 
     def load(self) -> bool:
-        if self.homography_file is None or not os.path.isfile(self.homography_file):
-            return False
-        if self.depth_param_file is None or not os.path.isfile(self.depth_param_file):
-            return False
         # Load Homography
-        d = loadmat(self.homography_file)
-        if not self.__homography__ in d:
-            raise ValueError('Homography file is not valid!')
-        self._homography = d[self.__homography__]
+        self._homography = load_homography(self.homography_file, silent=True)
         # Load Depth Camera Parameters
-        dconfig = None
-        with open(self.depth_param_file) as fdc:
-            dconfig = json.load(fdc)
-        self._depth_params = dconfig
-        return True
+        self._depth_params = load_depth_camera_params(self.depth_param_file)
 
     def __init(self, data : MMEContainer):
         if self._homography is not None:
@@ -93,7 +123,7 @@ class VTD_Alignment:
         self._homography = h
         self.save()
 
-    def pack(self, data : MMEContainer) -> RGBDnT:
+    def __align(self, data : MMEContainer) -> RGBDnT:
         if not self.__thermal__ in data.modality_names or \
            not self.__visible__ in data.modality_names or \
            not self.__depth__ in data.modality_names:
@@ -107,20 +137,14 @@ class VTD_Alignment:
         corrected_thermal = cv2.warpPerspective(thermal, self.homography, 
             (visible.shape[1], visible.shape[0]))
         
-        return RGBDnT(visible, corrected_thermal, depth, self._homography)
+        return visible, corrected_thermal, depth
 
-    def compute(self, data : MMEContainer):
-        return self.fuse(self.pack(data))
+    def compute(self, data : MMEContainer) -> RGBDnT:
+        visible, thermal, depth = self.__align(data)
+        return self._fuse(visible, thermal, depth)
 
-    def fuse(self, data : RGBDnT):
-        visible = data.visible
-        thermal = data.thermal
-        depth = data.depth
+    def _fuse(self, visible, thermal, depth):
         # Form the point cloud
-        #     [ fx   0   cx ] 
-        # K = [ 0    fy  cy ] 
-        #     [ 0    0   1  ] 
-        # 
         # P = d * [(x - p_x) / f_x , (y - p_y) / f_y, 1]^-1
         height, width = depth.shape
 
@@ -137,73 +161,5 @@ class VTD_Alignment:
         X = np.multiply(Z, (X - p_x) / f_x)
         Y = np.multiply(Z, (Y - p_y) / f_y)
         
-        data.rgbdt =  np.dstack((X,Y,Z, gray_to_rgb(visible), thermal))
-        data.point_cloud = rgbdt_to_array3d(data.rgbdt)
-        return data
-
-class VTD_Alignment_O3D(VTD_Alignment):
-
-    def __init__(self, target_dir: str = None, depth_param_file: str = None) -> None:
-        super().__init__(target_dir, depth_param_file)
-
-    def compute(self, data : MMEContainer):
-        return self.fuse(
-            RGBDnT_O3D.pack(self.pack(data))
-        )
-
-    def fuse(self, data : RGBDnT):
-        data = VTD_Alignment.fuse(self, data)
-
-        visible = data.visible
-        thermal = data.thermal
-        depth = data.depth
-        ######## Save image temporarily
-        temp_dir = os.path.join(os.getcwd(),'tmp')
-        Path(temp_dir).mkdir(parents=True, exist_ok=True)
-        # Save the modalities
-        vis_file = os.path.join(temp_dir, '.visible.png')
-        th_file = os.path.join(temp_dir, '.thermal.png')
-        dp_file = os.path.join(temp_dir, '.depth.png')
-        Image.fromarray(visible).save(vis_file)
-        Image.fromarray(gray_to_rgb(thermal.astype(np.uint8))).save(th_file)
-        Image.fromarray(depth).save(dp_file)
-        # Read the temporary image files
-        data.o3d_visible = o3d.io.read_image(vis_file)
-        data.o3d_thermal = o3d.io.read_image(th_file)
-        data.o3d_depth = o3d.io.read_image(dp_file)
-        # Form the RGBDnT images
-        data.rgbd_visible = o3d.geometry.RGBDImage.create_from_color_and_depth(
-            data.o3d_visible, data.o3d_depth,
-            depth_scale=1000.0, depth_trunc=5.0)
-        data.rgbd_thermal = o3d.geometry.RGBDImage.create_from_color_and_depth(
-            data.o3d_thermal, data.o3d_depth,
-            depth_scale=1000.0, depth_trunc=5.0)
-        # Form the Pinhole Camera parameters
-        f_x = self._depth_params['K'][0]
-        p_x = self._depth_params['K'][2]
-        f_y = self._depth_params['K'][4]
-        p_y = self._depth_params['K'][5]
-        data.pinhole_depth_params = o3d.camera.PinholeCameraIntrinsic(
-            width=visible.shape[1], 
-            height=visible.shape[0],
-            fx = f_x, fy = f_y,
-            cx = p_x, cy = p_y
-        )
-        #     [ fx   0   cx ] 
-        # K = [ 0    fy  cy ] 
-        #     [ 0    0   1  ] 
-        # 
-        # P = d * [(x - p_x) / f_x , (y - p_y) / f_y, 1]^-1
-        data.pcs_visible = o3d.geometry.PointCloud.create_from_rgbd_image(
-            data.rgbd_visible, 
-            intrinsic=data.pinhole_depth_params
-        )
-        data.pcs_thermal = o3d.geometry.PointCloud.create_from_rgbd_image(
-            data.rgbd_thermal, 
-            intrinsic=data.pinhole_depth_params
-        )
-        # Delete the temporary image files
-        os.unlink(vis_file)
-        os.unlink(th_file)
-        os.unlink(dp_file)
-        return data
+        data =  np.dstack((X,Y,Z, gray_to_rgb(visible), thermal))
+        return RGBDnT(data)

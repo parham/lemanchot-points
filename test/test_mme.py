@@ -10,7 +10,8 @@ sys.path.append(__file__)
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from phm.data import MMEContainer, MMERecord
-from phm.io import load_entity, save_mme, create_mme_dataset
+from phm.io import load_entity, save_mme
+
 
 class Test_MME_Record(unittest.TestCase):
 
@@ -52,11 +53,6 @@ class Test_MME_Record(unittest.TestCase):
 
         save_mme('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/test.mme', container, file_type='mme')
         save_mme('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/test.mat', container, file_type='mat')
-    
-    def test_create_dataset(self):
-        dir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal'
-        create_mme_dataset(root_dir=dir, file_type='mme')
-        create_mme_dataset(root_dir=dir, file_type='mat')
 
 if __name__ == '__main__':
     unittest.main()

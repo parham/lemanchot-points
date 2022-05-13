@@ -1,14 +1,15 @@
 
-from enum import Enum, unique
 import os
 import sys
-import platform
 import numpy as np
 import open3d as o3d
 import open3d.visualization.gui as gui
 import open3d.visualization.rendering as rendering
 
 from dotmap import DotMap
+from enum import Enum, unique
+
+from phm.data import RGBDnT_O3D
 
 @unique
 class Modalities(Enum):
@@ -36,6 +37,7 @@ class VTD_Visualization:
     MENU_ABOUT = 21
 
     def __init__(self, 
+        data : RGBD
         win_width : int = 200, 
         win_height : int = 200
     ):
@@ -55,18 +57,19 @@ class VTD_Visualization:
         ############# View Control Panel
         view_ctrls = gui.CollapsableVert(
             "View Controls", 0.25 * em, gui.Margins(em, 0, 0, 0))
-        
+        # Show Skymap (Checkbox)
         self._show_skybox = gui.Checkbox("Show Skymap")
         self._show_skybox.set_on_checked(self._on_show_skybox)
-        view_ctrls.add_fixed(separation_height)
         view_ctrls.add_child(self._show_skybox)
 
+        view_ctrls.add_fixed(separation_height)
+        grid = gui.VGrid(2, 0.25 * em)
+        # Select Background
         self._bg_color = gui.ColorEdit()
         self._bg_color.set_on_value_changed(self._on_bg_color)
-
-        grid = gui.VGrid(2, 0.25 * em)
         grid.add_child(gui.Label("Background"))
         grid.add_child(self._bg_color)
+        # Select Point Cloud
         grid.add_child(gui.Label("Point size"))
         self._point_size = gui.Slider(gui.Slider.INT)
         self._point_size.set_limits(1, 10)
@@ -117,8 +120,7 @@ class VTD_Visualization:
             settings_menu.add_item(
                 "Settings Panel",
                 VTD_Visualization.MENU_SHOW_SETTINGS)
-            settings_menu.set_checked(
-                VTD_Visualization.MENU_SHOW_SETTINGS, True)
+            settings_menu.set_checked(VTD_Visualization.MENU_SHOW_SETTINGS, True)
             help_menu = gui.Menu()
             help_menu.add_item("About", VTD_Visualization.MENU_ABOUT)
 
@@ -129,17 +131,28 @@ class VTD_Visualization:
             gui.Application.instance.menubar = menu
 
             self.window.set_on_menu_item_activated(
-                VTD_Visualization.MENU_OPEN, self._on_menu_open)
+                VTD_Visualization.MENU_OPEN, 
+                self._on_menu_open)
             self.window.set_on_menu_item_activated(
                 VTD_Visualization.MENU_EXPORT,
                 self._on_menu_export)
-            self.window.set_on_menu_item_activated(VTD_Visualization.MENU_QUIT, self._on_menu_quit)
-            self.window.set_on_menu_item_activated(VTD_Visualization.MENU_SHOW_SETTINGS,
-                                        self._on_menu_toggle_settings_panel)
-            self.window.set_on_menu_item_activated(VTD_Visualization.MENU_ABOUT, self._on_menu_about)
+            self.window.set_on_menu_item_activated(
+                VTD_Visualization.MENU_QUIT, 
+                self._on_menu_quit)
+            self.window.set_on_menu_item_activated(
+                VTD_Visualization.MENU_SHOW_SETTINGS,
+                self._on_menu_toggle_settings_panel)
+            self.window.set_on_menu_item_activated(
+                VTD_Visualization.MENU_ABOUT, 
+                self._on_menu_about)
 
     def _on_menu_quit(self):
         gui.Application.instance.quit()
+
+    def _on_point_size(self, size):
+        self.settings.material.point_size = int(size)
+        self.settings.apply_material = True
+        self._apply_settings()
 
     def _on_menu_open(self):
         dlg = gui.FileDialog(gui.FileDialog.OPEN, "Choose file to load",
@@ -204,21 +217,21 @@ class VTD_Visualization:
         self.settings = DotMap()
 
     def _apply_settings(self):
+        # Skymap
+        self._scene.scene.show_skybox(self.settings.show_skybox)
+        self._show_skybox.checked = self.settings.show_skybox
+        # Background
         bg_color = [
             self.settings.bg_color.red, self.settings.bg_color.green,
             self.settings.bg_color.blue, self.settings.bg_color.alpha
         ]
         self._scene.scene.set_background(bg_color)
-        self._scene.scene.show_skybox(self.settings.show_skybox)
-        self._scene.scene.show_axes(self.settings.show_axes)
-
-        if self.settings.apply_material:
-            self._scene.scene.update_material(self.settings.material)
-            self.settings.apply_material = False
-
         self._bg_color.color_value = self.settings.bg_color
-        self._show_skybox.checked = self.settings.show_skybox
-        self._show_axes.checked = self.settings.show_axes
+        # Point Cloud
+        self._point_size.double_value = self.settings.material.point_size
+
+
+        
         self._use_ibl.checked = self.settings.use_ibl
         self._use_sun.checked = self.settings.use_sun
         self._ibl_intensity.int_value = self.settings.ibl_intensity
@@ -232,7 +245,6 @@ class VTD_Visualization:
                       self.settings.material.base_color[2],
                       self.settings.material.base_color[3])
         self._material_color.color_value = c
-        self._point_size.double_value = self.settings.material.point_size
 
 if __name__ == "__main__":
     gui.Application.instance.initialize()

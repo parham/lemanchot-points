@@ -1,22 +1,24 @@
 
-import glob
 import os
-from pathlib import Path
 import numpy as np
 
-from plyfile import PlyData, PlyElement, make2d, PlyHeaderParseError, PlyElementParseError, PlyProperty
-
+from plyfile import PlyData, PlyElement
 from typing import List, Tuple, Union
 from scipy.io import savemat, loadmat
 from phm.data import RGBDnT
 from phm.vtd import rgbdt_to_array3d
 
 __rgbdt__ = 'rgbdt'
+__fid__ = 'fid'
 
-def save_RGBDnT(file : str, data : RGBDnT):
-    if data.rgbdt is None:
-        raise ValueError('RGBDT data is missing or corrupted!')
-    savemat(file, {__rgbdt__ : data.rgbdt}, do_compression=True)
+def save_RGBDnT(file : str, record : RGBDnT):
+    if record.data is None:
+        raise ValueError('RGBD&T data is missing or corrupted!')
+    
+    savemat(file, {
+        __rgbdt__ : record.data,
+        __fid__ : record.fid
+    }, do_compression=True)
 
 def load_RGBDnT(file : str) -> RGBDnT:
     if not os.path.isfile(file):
@@ -25,15 +27,12 @@ def load_RGBDnT(file : str) -> RGBDnT:
     obj = loadmat(file)
     if not __rgbdt__ in obj:
         raise ValueError('RGBD&T file is not valid!')
+
     rgbdt = obj[__rgbdt__]
 
-    return RGBDnT(
-        visible=rgbdt[:,:,3:5],
-        thermal=rgbdt[:,:,6],
-        depth=rgbdt[:,:,2],
-        rgbdt=rgbdt,
-        point_cloud=rgbdt_to_array3d(rgbdt)
-    )
+    fid = obj[__fid__] if __fid__ in obj else 'unknown'
+
+    return RGBDnT(fid=fid, data=rgbdt)
 
 __pcloud_exporters = {}
 
@@ -86,4 +85,4 @@ def load_point_cloud(file : str, file_type : str):
 def load_ply(file : str, file_type : str):
     pcs = PlyData.read(file)
     points = [np.array(x) for x in pcs['vertex']]
-    return RGBDnT(point_cloud=points)
+    return points

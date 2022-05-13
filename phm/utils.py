@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from phm.data.vtd import RGBDnT
+from phm.data import RGBDnT
 
 modal_to_image = lambda img : (((img - np.min(img)) / (np.max(img) - np.min(img))) * 255.0).astype(np.uint8)
 

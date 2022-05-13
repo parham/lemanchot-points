@@ -6,3 +6,4 @@ qtawesome
 opencv-contrib-python
 plyfile
 DotMap
+imageio

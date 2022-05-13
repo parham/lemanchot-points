@@ -7,7 +7,6 @@ import re
 
 from pathlib import Path
 from functools import lru_cache
-from collections import Iterator
 from typing import Callable
 
 from phm.data import MMEContainer, MMERecord
@@ -132,7 +131,6 @@ def create_mme_dataset(
     matched = 0
     for ptn in file_ids:
         container = MMEContainer(cid=ptn)
-        container.set_metadata('file_id', ptn)
         # Check if find all modalities
         modalities = {}
         for (dtype, dfolder) in sub_folders.items():
