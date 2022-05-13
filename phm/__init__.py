@@ -7,3 +7,5 @@ from .data import *
 from .io import *
 from .control_point import *
 from .dataset import *
+from .utils import *
+from .visualization import *

@@ -9,24 +9,193 @@ import open3d.visualization.rendering as rendering
 from dotmap import DotMap
 from enum import Enum, unique
 
-from phm.data import RGBDnT_O3D
+from phm.data import RGBDnT
 
 @unique
 class Modalities(Enum):
     Visible_Depth = 0,
-    Thermal_Depth = 1,
-    Depth_Only = 2,
+    Thermal_Depth = 1
 
     def __str__(self):
         return self.label
+
+    @staticmethod
+    def from_index(index : int):
+        items = list(Modalities)
+        return items[index]
 
     @property
     def label(self):
         return {
             Modalities.Visible_Depth : 'Visible Depth',
-            Modalities.Thermal_Depth : 'Thermal Depth',
-            Modalities.Depth_Only : 'Depth Only'
+            Modalities.Thermal_Depth : 'Thermal Depth'
         }[self]
+
+class Settings:
+    UNLIT = "defaultUnlit"
+    LIT = "defaultLit"
+    NORMALS = "normals"
+    DEPTH = "depth"
+
+    DEFAULT_PROFILE_NAME = "Bright day with sun at +Y [default]"
+    POINT_CLOUD_PROFILE_NAME = "Cloudy day (no direct sun)"
+    CUSTOM_PROFILE_NAME = "Custom"
+    LIGHTING_PROFILES = {
+        DEFAULT_PROFILE_NAME: {
+            "ibl_intensity": 45000,
+            "sun_intensity": 45000,
+            "sun_dir": [0.577, -0.577, -0.577],
+            # "ibl_rotation":
+            "use_ibl": True,
+            "use_sun": True,
+        },
+        "Bright day with sun at -Y": {
+            "ibl_intensity": 45000,
+            "sun_intensity": 45000,
+            "sun_dir": [0.577, 0.577, 0.577],
+            # "ibl_rotation":
+            "use_ibl": True,
+            "use_sun": True,
+        },
+        "Bright day with sun at +Z": {
+            "ibl_intensity": 45000,
+            "sun_intensity": 45000,
+            "sun_dir": [0.577, 0.577, -0.577],
+            # "ibl_rotation":
+            "use_ibl": True,
+            "use_sun": True,
+        },
+        "Less Bright day with sun at +Y": {
+            "ibl_intensity": 35000,
+            "sun_intensity": 50000,
+            "sun_dir": [0.577, -0.577, -0.577],
+            # "ibl_rotation":
+            "use_ibl": True,
+            "use_sun": True,
+        },
+        "Less Bright day with sun at -Y": {
+            "ibl_intensity": 35000,
+            "sun_intensity": 50000,
+            "sun_dir": [0.577, 0.577, 0.577],
+            # "ibl_rotation":
+            "use_ibl": True,
+            "use_sun": True,
+        },
+        "Less Bright day with sun at +Z": {
+            "ibl_intensity": 35000,
+            "sun_intensity": 50000,
+            "sun_dir": [0.577, 0.577, -0.577],
+            # "ibl_rotation":
+            "use_ibl": True,
+            "use_sun": True,
+        },
+        POINT_CLOUD_PROFILE_NAME: {
+            "ibl_intensity": 60000,
+            "sun_intensity": 50000,
+            "use_ibl": True,
+            "use_sun": False,
+            # "ibl_rotation":
+        },
+    }
+
+    DEFAULT_MATERIAL_NAME = "Polished ceramic [default]"
+    PREFAB = {
+        DEFAULT_MATERIAL_NAME: {
+            "metallic": 0.0,
+            "roughness": 0.7,
+            "reflectance": 0.5,
+            "clearcoat": 0.2,
+            "clearcoat_roughness": 0.2,
+            "anisotropy": 0.0
+        },
+        "Metal (rougher)": {
+            "metallic": 1.0,
+            "roughness": 0.5,
+            "reflectance": 0.9,
+            "clearcoat": 0.0,
+            "clearcoat_roughness": 0.0,
+            "anisotropy": 0.0
+        },
+        "Metal (smoother)": {
+            "metallic": 1.0,
+            "roughness": 0.3,
+            "reflectance": 0.9,
+            "clearcoat": 0.0,
+            "clearcoat_roughness": 0.0,
+            "anisotropy": 0.0
+        },
+        "Plastic": {
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "reflectance": 0.5,
+            "clearcoat": 0.5,
+            "clearcoat_roughness": 0.2,
+            "anisotropy": 0.0
+        },
+        "Glazed ceramic": {
+            "metallic": 0.0,
+            "roughness": 0.5,
+            "reflectance": 0.9,
+            "clearcoat": 1.0,
+            "clearcoat_roughness": 0.1,
+            "anisotropy": 0.0
+        },
+        "Clay": {
+            "metallic": 0.0,
+            "roughness": 1.0,
+            "reflectance": 0.5,
+            "clearcoat": 0.1,
+            "clearcoat_roughness": 0.287,
+            "anisotropy": 0.0
+        },
+    }
+
+    def __init__(self):
+        self.mouse_model = gui.SceneWidget.Controls.ROTATE_CAMERA
+        self.bg_color = gui.Color(1, 1, 1)
+        self.show_skybox = False
+        self.show_axes = False
+        self.use_ibl = True
+        self.use_sun = True
+        self.new_ibl_name = None  # clear to None after loading
+        self.ibl_intensity = 45000
+        self.sun_intensity = 45000
+        self.sun_dir = [0.577, -0.577, -0.577]
+        self.sun_color = gui.Color(1, 1, 1)
+
+        self.apply_material = True  # clear to False after processing
+        self._materials = {
+            Settings.LIT: rendering.MaterialRecord(),
+            Settings.UNLIT: rendering.MaterialRecord(),
+            Settings.NORMALS: rendering.MaterialRecord(),
+            Settings.DEPTH: rendering.MaterialRecord()
+        }
+        self._materials[Settings.LIT].base_color = [0.9, 0.9, 0.9, 1.0]
+        self._materials[Settings.LIT].shader = Settings.LIT
+        self._materials[Settings.UNLIT].base_color = [0.9, 0.9, 0.9, 1.0]
+        self._materials[Settings.UNLIT].shader = Settings.UNLIT
+        self._materials[Settings.NORMALS].shader = Settings.NORMALS
+        self._materials[Settings.DEPTH].shader = Settings.DEPTH
+
+        # Conveniently, assigning from self._materials[...] assigns a reference,
+        # not a copy, so if we change the property of a material, then switch
+        # to another one, then come back, the old setting will still be there.
+        self.material = self._materials[Settings.UNLIT]
+
+    def set_material(self, name):
+        self.material = self._materials[name]
+        self.apply_material = True
+
+    def apply_material_prefab(self, name):
+        assert (self.material.shader == Settings.LIT)
+        prefab = Settings.PREFAB[name]
+        for key, val in prefab.items():
+            setattr(self.material, "base_" + key, val)
+
+    def apply_lighting_profile(self, name):
+        profile = Settings.LIGHTING_PROFILES[name]
+        for key, val in profile.items():
+            setattr(self, key, val)
 
 class VTD_Visualization:
 
@@ -37,10 +206,13 @@ class VTD_Visualization:
     MENU_ABOUT = 21
 
     def __init__(self, 
-        data : RGBD
+        data : RGBDnT,
+        pinhole,
         win_width : int = 200, 
         win_height : int = 200
     ):
+        self.__data = data
+        self._pinhole = pinhole
         # Initialize the settings
         self.__init_settings()
         # Create the window instance
@@ -54,7 +226,7 @@ class VTD_Visualization:
         # Create the setting panel
         self._settings_panel = gui.Vert(
             0, gui.Margins(0.25 * em, 0.25 * em, 0.25 * em, 0.25 * em))
-        ############# View Control Panel
+        ############# View Control Panel #############
         view_ctrls = gui.CollapsableVert(
             "View Controls", 0.25 * em, gui.Margins(em, 0, 0, 0))
         # Show Skymap (Checkbox)
@@ -79,7 +251,7 @@ class VTD_Visualization:
 
         self._settings_panel.add_child(view_ctrls)
         self._settings_panel.add_fixed(separation_height)
-        ############# Modalities Panel
+        ############# Modalities Panel #############
         modalities_ctrls = gui.CollapsableVert(
             "Modalities", 0.25 * em, gui.Margins(em, 0, 0, 0))
         grid = gui.VGrid(2, 0.25 * em)
@@ -93,7 +265,7 @@ class VTD_Visualization:
 
         self._settings_panel.add_child(modalities_ctrls)
         self._settings_panel.add_fixed(separation_height)
-        ############# Filter Panel
+        ############# Filter Panel #############
         filters_ctrls = gui.CollapsableVert(
             "Filters", 0.25 * em, gui.Margins(em, 0, 0, 0))
 
@@ -105,6 +277,8 @@ class VTD_Visualization:
         self.window.add_child(self._settings_panel)
 
         self.__init_menu()
+
+        self.set_point_cloud(data.to_point_cloud_visible_o3d(pinhole))
 
     def __init_menu(self):
         # Application Menubar
@@ -121,13 +295,11 @@ class VTD_Visualization:
                 "Settings Panel",
                 VTD_Visualization.MENU_SHOW_SETTINGS)
             settings_menu.set_checked(VTD_Visualization.MENU_SHOW_SETTINGS, True)
-            help_menu = gui.Menu()
-            help_menu.add_item("About", VTD_Visualization.MENU_ABOUT)
 
             menu = gui.Menu()
             menu.add_menu("File", file_menu)
             menu.add_menu("Settings", settings_menu)
-            menu.add_menu("Help", help_menu)
+            
             gui.Application.instance.menubar = menu
 
             self.window.set_on_menu_item_activated(
@@ -142,17 +314,33 @@ class VTD_Visualization:
             self.window.set_on_menu_item_activated(
                 VTD_Visualization.MENU_SHOW_SETTINGS,
                 self._on_menu_toggle_settings_panel)
-            self.window.set_on_menu_item_activated(
-                VTD_Visualization.MENU_ABOUT, 
-                self._on_menu_about)
 
-    def _on_menu_quit(self):
-        gui.Application.instance.quit()
+    def _on_layout(self, layout_context):
+        # The on_layout callback should set the frame (position + size) of every
+        # child correctly. After the callback is done the window will layout
+        # the grandchildren.
+        r = self.window.content_rect
+        self._scene.frame = r
+        width = 17 * layout_context.theme.font_size
+        height = min(
+            r.height,
+            self._settings_panel.calc_preferred_size(
+                layout_context, gui.Widget.Constraints()).height)
+        self._settings_panel.frame = gui.Rect(r.get_right() - width, 
+            r.y, width, height)
 
     def _on_point_size(self, size):
         self.settings.material.point_size = int(size)
         self.settings.apply_material = True
         self._apply_settings()
+
+    def _on_menu_toggle_settings_panel(self):
+        self._settings_panel.visible = not self._settings_panel.visible
+        gui.Application.instance.menubar.set_checked(
+            VTD_Visualization.MENU_SHOW_SETTINGS, self._settings_panel.visible)
+
+    def _on_menu_quit(self):
+        gui.Application.instance.quit()
 
     def _on_menu_open(self):
         dlg = gui.FileDialog(gui.FileDialog.OPEN, "Choose file to load",
@@ -179,14 +367,14 @@ class VTD_Visualization:
         dlg.add_filter(".pts", "3D Points files (.pts)")
         dlg.add_filter("", "All files")
 
-        def _on_load_dialog_done(self, filename):
-            self.window.close_dialog()
-            self.load(filename)
-
         # A file dialog MUST define on_cancel and on_done functions
         dlg.set_on_cancel(self.window.close_dialog)
         dlg.set_on_done(self._on_load_dialog_done)
         self.window.show_dialog(dlg)
+
+    def _on_load_dialog_done(self, filename):
+        self.window.close_dialog()
+        self.load(filename)
 
     def _on_menu_export(self):
         dlg = gui.FileDialog(gui.FileDialog.SAVE, 
@@ -201,8 +389,30 @@ class VTD_Visualization:
         frame = self._scene.frame
         self.export_image(filename, frame.width, frame.height)
 
+    def set_point_cloud(self, pc):
+
+        self._pcloud = pc
+
+        self._scene.scene.clear_geometry()
+        if not self._pcloud.has_normals():
+            self._pcloud.estimate_normals()
+        self._pcloud.normalize_normals()
+
+        try:
+            self._scene.scene.add_geometry("__model__", 
+                self._pcloud, self.settings.material)
+            bounds = self._pcloud.get_axis_aligned_bounding_box()
+            self._scene.setup_camera(60, bounds, bounds.get_center())
+        except Exception as e:
+            print(e)    
+
     def _on_modalities(self, name, index):
-        self.settings.modalities = Modalities(index)
+        self.settings.modalities = Modalities.from_index(index)
+        if self.settings.modalities == Modalities.Visible_Depth:
+            self.set_point_cloud(self.__data.to_point_cloud_visible_o3d(self._pinhole))
+        elif self.settings.modalities == Modalities.Thermal_Depth:
+            self.set_point_cloud(self.__data.to_point_cloud_thermal_o3d(self._pinhole))
+
         self._apply_settings()
 
     def _on_bg_color(self, new_color):
@@ -214,7 +424,7 @@ class VTD_Visualization:
         self._apply_settings()
 
     def __init_settings(self):
-        self.settings = DotMap()
+        self.settings = Settings()
 
     def _apply_settings(self):
         # Skymap
@@ -230,33 +440,59 @@ class VTD_Visualization:
         # Point Cloud
         self._point_size.double_value = self.settings.material.point_size
 
+        if self.settings.apply_material:
+            self._scene.scene.update_material(self.settings.material)
+            self.settings.apply_material = False
 
-        
-        self._use_ibl.checked = self.settings.use_ibl
-        self._use_sun.checked = self.settings.use_sun
-        self._ibl_intensity.int_value = self.settings.ibl_intensity
-        self._sun_intensity.int_value = self.settings.sun_intensity
-        self._sun_dir.vector_value = self.settings.sun_dir
-        self._sun_color.color_value = self.settings.sun_color
-        self._material_prefab.enabled = (
-            self.settings.material.shader == Settings.LIT)
-        c = gui.Color(self.settings.material.base_color[0],
-                      self.settings.material.base_color[1],
-                      self.settings.material.base_color[2],
-                      self.settings.material.base_color[3])
-        self._material_color.color_value = c
+        self._scene.scene.clear_geometry()
 
-if __name__ == "__main__":
-    gui.Application.instance.initialize()
 
-    w = VTD_Visualization(1024, 768)
+    def load(self, path):
+        self._scene.scene.clear_geometry()
 
-    if len(sys.argv) > 1:
-        path = sys.argv[1]
-        if os.path.exists(path):
-            w.load(path)
+        geometry = None
+        geometry_type = o3d.io.read_file_geometry_type(path)
+
+        mesh = None
+        if geometry_type & o3d.io.CONTAINS_TRIANGLES:
+            mesh = o3d.io.read_triangle_mesh(path)
+        if mesh is not None:
+            if len(mesh.triangles) == 0:
+                print(
+                    "[WARNING] Contains 0 triangles, will read as point cloud")
+                mesh = None
+            else:
+                mesh.compute_vertex_normals()
+                if len(mesh.vertex_colors) == 0:
+                    mesh.paint_uniform_color([1, 1, 1])
+                geometry = mesh
+            # Make sure the mesh has texture coordinates
+            if not mesh.has_triangle_uvs():
+                uv = np.array([[0.0, 0.0]] * (3 * len(mesh.triangles)))
+                mesh.triangle_uvs = o3d.utility.Vector2dVector(uv)
         else:
-            w.window.show_message_box("Error", "Could not open file '" + path + "'")
+            print("[Info]", path, "appears to be a point cloud")
 
-    # Run the event loop. This will not return until the last window is closed.
-    gui.Application.instance.run()
+        if geometry is None:
+            cloud = None
+            try:
+                cloud = o3d.io.read_point_cloud(path)
+            except Exception:
+                pass
+            if cloud is not None:
+                print("[Info] Successfully read", path)
+                if not cloud.has_normals():
+                    cloud.estimate_normals()
+                cloud.normalize_normals()
+                geometry = cloud
+            else:
+                print("[WARNING] Failed to read points", path)
+
+        if geometry is not None:
+            try:
+                self._scene.scene.add_geometry("__model__", 
+                    geometry, self.settings.material)
+                bounds = geometry.get_axis_aligned_bounding_box()
+                self._scene.setup_camera(60, bounds, bounds.get_center())
+            except Exception as e:
+                print(e)

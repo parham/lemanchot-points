@@ -33,6 +33,19 @@ def load_depth_camera_params(file : str):
         dconfig = json.load(fdc)
     return dconfig
 
+def load_pinhole(file : str):
+    dparam = load_depth_camera_params(file)
+    f_x = dparam['K'][0]
+    p_x = dparam['K'][2]
+    f_y = dparam['K'][4]
+    p_y = dparam['K'][5]
+    return o3d.camera.PinholeCameraIntrinsic(
+        width=dparam['width'], 
+        height=dparam['height'],
+        fx = f_x, fy = f_y,
+        cx = p_x, cy = p_y
+    )
+
 def load_homography(file : str, silent : bool = False):
     if file is None or not os.path.isfile(file):
         if not silent:
