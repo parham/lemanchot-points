@@ -14,6 +14,7 @@ gui.Application.instance.initialize()
 w = VTD_Visualization(data, 
     load_pinhole('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/depth/camera_info.json'), 
     1024, 768)
+w.load_visible()
 
 if len(sys.argv) > 1:
     path = sys.argv[1]

@@ -11,8 +11,10 @@ from scipy.io import savemat, loadmat
 from phm.utils import gray_to_rgb, modal_to_image
 from phm.control_point import cpselect
 from phm.data import MMEContainer, RGBDnT
+from phm.data.vtd import __depth_scale__
 
 __homography__ = 'homography'
+
 
 def rgbdt_to_array3d(data : np.ndarray):
     height, width, channel = data.shape
@@ -170,7 +172,7 @@ class VTD_Alignment:
         f_y = self._depth_params['K'][4]
         p_y = self._depth_params['K'][5]
         # Correct the coordinates
-        Z = depth / 1000
+        Z = depth / __depth_scale__
         X = np.multiply(Z, (X - p_x) / f_x)
         Y = np.multiply(Z, (Y - p_y) / f_y)
         

@@ -4,28 +4,28 @@ import numpy as np
 import open3d as o3d
 import imageio
 
-from PIL import Image
 from pathlib import Path
 from dataclasses import dataclass
 
-import scipy
+__depth_scale__ = 1000
 
 @dataclass
 class RGBDnT:
+
     data : np.ndarray # channels : X Y Z R G B & T
     fid : str = ''
 
     @property
     def depth_image(self):
-        return self.data[:,:,2]
+        return np.asarray(self.data[:,:,2] * __depth_scale__, np.uint16)
     
     @property
     def visible_image(self):
-        return self.data[:,:,3:-1]
+        return np.asarray(self.data[:,:,3:-1], np.uint8)
     
     @property
     def thermal_image(self):
-        return self.data[:,:,-1]
+        return np.asarray(self.data[:,:,-1], np.uint8)
     
     @property
     def point_cloud(self):
@@ -89,7 +89,7 @@ class RGBDnT:
             color, depth, depth_scale=depth_scale, depth_trunc=depth_trunc)
 
     def to_RGBD_visible_o3d(self, 
-        depth_scale : float = 1000.0, 
+        depth_scale : float = __depth_scale__, 
         depth_trunc : float = 5.0):
         return self._convert_RGBD_o3d(
             self.to_visible_image_o3d(),
@@ -98,7 +98,7 @@ class RGBDnT:
             depth_trunc=depth_trunc)
     
     def to_RGBD_thermal_o3d(self, 
-        depth_scale : float = 1000.0, 
+        depth_scale : float = __depth_scale__, 
         depth_trunc : float = 5.0):
         return self._convert_RGBD_o3d(
             self.to_thermal_image_o3d(),

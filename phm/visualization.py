@@ -211,8 +211,6 @@ class VTD_Visualization:
         win_width : int = 200, 
         win_height : int = 200
     ):
-        self.__data = data
-        self._pinhole = pinhole
         # Initialize the settings
         self.__init_settings()
         # Create the window instance
@@ -278,7 +276,9 @@ class VTD_Visualization:
 
         self.__init_menu()
 
-        self.set_point_cloud(data.to_point_cloud_visible_o3d(pinhole))
+        self.__data = data
+        self._pinhole = pinhole
+        # self.set_point_cloud(self.__data.to_point_cloud_visible_o3d(pinhole))
 
     def __init_menu(self):
         # Application Menubar
@@ -389,29 +389,37 @@ class VTD_Visualization:
         frame = self._scene.frame
         self.export_image(filename, frame.width, frame.height)
 
+    def load_visible(self):
+        self.set_point_cloud(self.__data.to_point_cloud_visible_o3d(self._pinhole))
+    
+    def load_thermal(self):
+        self.set_point_cloud(self.__data.to_point_cloud_thermal_o3d(self._pinhole))
+
     def set_point_cloud(self, pc):
-
         self._pcloud = pc
-
         self._scene.scene.clear_geometry()
-        if not self._pcloud.has_normals():
-            self._pcloud.estimate_normals()
-        self._pcloud.normalize_normals()
 
-        try:
-            self._scene.scene.add_geometry("__model__", 
-                self._pcloud, self.settings.material)
-            bounds = self._pcloud.get_axis_aligned_bounding_box()
-            self._scene.setup_camera(60, bounds, bounds.get_center())
-        except Exception as e:
-            print(e)    
+        if self._pcloud is not None:
+            if not self._pcloud.has_normals():
+                self._pcloud.estimate_normals()
+            self._pcloud.normalize_normals()
+            try:
+                self._scene.scene.add_geometry("__model__", 
+                    self._pcloud, self.settings.material)
+                bounds = self._pcloud.get_axis_aligned_bounding_box()
+                self._scene.setup_camera(60, bounds, bounds.get_center())
+            except Exception as e:
+                print(e)  
+        else:
+            print("[WARNING] Failed to load points")  
+
 
     def _on_modalities(self, name, index):
         self.settings.modalities = Modalities.from_index(index)
         if self.settings.modalities == Modalities.Visible_Depth:
-            self.set_point_cloud(self.__data.to_point_cloud_visible_o3d(self._pinhole))
+            self.load_visible()
         elif self.settings.modalities == Modalities.Thermal_Depth:
-            self.set_point_cloud(self.__data.to_point_cloud_thermal_o3d(self._pinhole))
+            self.load_thermal()
 
         self._apply_settings()
 
@@ -445,54 +453,3 @@ class VTD_Visualization:
             self.settings.apply_material = False
 
         self._scene.scene.clear_geometry()
-
-
-    def load(self, path):
-        self._scene.scene.clear_geometry()
-
-        geometry = None
-        geometry_type = o3d.io.read_file_geometry_type(path)
-
-        mesh = None
-        if geometry_type & o3d.io.CONTAINS_TRIANGLES:
-            mesh = o3d.io.read_triangle_mesh(path)
-        if mesh is not None:
-            if len(mesh.triangles) == 0:
-                print(
-                    "[WARNING] Contains 0 triangles, will read as point cloud")
-                mesh = None
-            else:
-                mesh.compute_vertex_normals()
-                if len(mesh.vertex_colors) == 0:
-                    mesh.paint_uniform_color([1, 1, 1])
-                geometry = mesh
-            # Make sure the mesh has texture coordinates
-            if not mesh.has_triangle_uvs():
-                uv = np.array([[0.0, 0.0]] * (3 * len(mesh.triangles)))
-                mesh.triangle_uvs = o3d.utility.Vector2dVector(uv)
-        else:
-            print("[Info]", path, "appears to be a point cloud")
-
-        if geometry is None:
-            cloud = None
-            try:
-                cloud = o3d.io.read_point_cloud(path)
-            except Exception:
-                pass
-            if cloud is not None:
-                print("[Info] Successfully read", path)
-                if not cloud.has_normals():
-                    cloud.estimate_normals()
-                cloud.normalize_normals()
-                geometry = cloud
-            else:
-                print("[WARNING] Failed to read points", path)
-
-        if geometry is not None:
-            try:
-                self._scene.scene.add_geometry("__model__", 
-                    geometry, self.settings.material)
-                bounds = geometry.get_axis_aligned_bounding_box()
-                self._scene.setup_camera(60, bounds, bounds.get_center())
-            except Exception as e:
-                print(e)
