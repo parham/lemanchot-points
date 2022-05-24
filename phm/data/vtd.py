@@ -38,7 +38,7 @@ class RGBDnT:
                 ('red', 'u1'), ('green', 'u1'), ('blue', 'u1'), # color
                 ('thermal', 'u1') # thermal
             ])
-    
+
     def visible_point_cloud(self):
         height, width, channel = self.data.shape
         tmp = self.data.reshape((height * width), channel)
@@ -49,7 +49,7 @@ class RGBDnT:
                 ('red', 'u1'), ('green', 'u1'), ('blue', 'u1')
             ])
     
-    def thermal_point_cloud(self, remove_nulls : bool = False):
+    def thermal_point_cloud(self):
         height, width, channel = self.data.shape
         tmp = self.data.reshape((height * width), channel)
         vertex_list = [tuple(x[(0,1,2,-1)].tolist()) for x in tmp if x[-1] <= 0]

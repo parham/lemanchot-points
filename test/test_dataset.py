@@ -31,13 +31,6 @@ class Test_Dataset(unittest.TestCase):
         for x in dataset:
             counter += 1
 
-    def test_load_point_cloud(self):
-        dataset = Dataset_LoadableFunc(
-            '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/pc',
-            'ply_text',
-            load_point_cloud
-        )
-
     def test_create_vtd_dataset(self):
         create_vtd_dataset(
             in_dir='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/mat',
@@ -57,6 +50,18 @@ class Test_Dataset(unittest.TestCase):
         dir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal'
         create_mme_dataset(root_dir=dir, file_type='mme')
         create_mme_dataset(root_dir=dir, file_type='mat')
+
+    def test_load_point_cloud(self):
+        dataset = Dataset_LoadableFunc(
+            '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/pc',
+            'ply_txt',
+            load_point_cloud
+        )
+    
+    def test_load_point_cloud_file(self):
+        load_point_cloud(
+            '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/pc/pcs_1625604434719.ply', 
+            'ply_txt')
 
 if __name__ == '__main__':
     unittest.main()

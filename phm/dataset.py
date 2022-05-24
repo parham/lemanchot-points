@@ -10,9 +10,10 @@ from functools import lru_cache
 from typing import Callable
 
 from phm.data import MMEContainer, MMERecord
+from phm.data.vtd import RGBDnT
 from phm.io import supported_modality_loaders, save_mme, load_entity
 from phm.io.mme import load_mme
-from phm.io.vtd import load_RGBDnT, save_RGBDnT, save_point_cloud
+from phm.io.vtd import load_RGBDnT, save_RGBDnT, save_dual_point_cloud, save_point_cloud
 from phm.vtd import VTD_Alignment
 from phm.utils import ftype_to_filext
 
@@ -203,3 +204,14 @@ def create_point_cloud_dataset(
             data=data,
             file_type=file_type
         )
+
+def create_dual_point_cloud(in_dir : str, target_dir : str):
+    if not os.path.isdir(in_dir):
+        raise ValueError('RGBD&T directory does not exist!')
+    
+    Path(target_dir).mkdir(parents=True, exist_ok=True)
+    dataset = VTD_Dataset(in_dir)
+    for x in dataset:
+        fid = x[0]
+        data = x[1]
+        save_dual_point_cloud(data, fid, target_dir)
