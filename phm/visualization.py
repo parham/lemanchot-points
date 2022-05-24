@@ -14,7 +14,9 @@ from phm.data import RGBDnT
 @unique
 class Modalities(Enum):
     Visible_Depth = 0,
-    Thermal_Depth = 1
+    Thermal_Depth = 1,
+    Fusion = 2,
+    Normals = 3
 
     def __str__(self):
         return self.label
@@ -28,193 +30,64 @@ class Modalities(Enum):
     def label(self):
         return {
             Modalities.Visible_Depth : 'Visible Depth',
-            Modalities.Thermal_Depth : 'Thermal Depth'
+            Modalities.Thermal_Depth : 'Thermal Depth',
+            Modalities.Fusion : 'Fusion',
+            Modalities.Normals : 'Normals'
         }[self]
 
-class Settings:
+class VTD_Visualization:
+
+    MENU_SCREENSHOT_EXPORT = 11
+    MENU_QUIT = 12
+    MENU_SHOW_SETTINGS = 21
+    MENU_ABOUT = 31
+
     UNLIT = "defaultUnlit"
     LIT = "defaultLit"
     NORMALS = "normals"
     DEPTH = "depth"
 
-    DEFAULT_PROFILE_NAME = "Bright day with sun at +Y [default]"
-    POINT_CLOUD_PROFILE_NAME = "Cloudy day (no direct sun)"
-    CUSTOM_PROFILE_NAME = "Custom"
-    LIGHTING_PROFILES = {
-        DEFAULT_PROFILE_NAME: {
-            "ibl_intensity": 45000,
-            "sun_intensity": 45000,
-            "sun_dir": [0.577, -0.577, -0.577],
-            # "ibl_rotation":
-            "use_ibl": True,
-            "use_sun": True,
-        },
-        "Bright day with sun at -Y": {
-            "ibl_intensity": 45000,
-            "sun_intensity": 45000,
-            "sun_dir": [0.577, 0.577, 0.577],
-            # "ibl_rotation":
-            "use_ibl": True,
-            "use_sun": True,
-        },
-        "Bright day with sun at +Z": {
-            "ibl_intensity": 45000,
-            "sun_intensity": 45000,
-            "sun_dir": [0.577, 0.577, -0.577],
-            # "ibl_rotation":
-            "use_ibl": True,
-            "use_sun": True,
-        },
-        "Less Bright day with sun at +Y": {
-            "ibl_intensity": 35000,
-            "sun_intensity": 50000,
-            "sun_dir": [0.577, -0.577, -0.577],
-            # "ibl_rotation":
-            "use_ibl": True,
-            "use_sun": True,
-        },
-        "Less Bright day with sun at -Y": {
-            "ibl_intensity": 35000,
-            "sun_intensity": 50000,
-            "sun_dir": [0.577, 0.577, 0.577],
-            # "ibl_rotation":
-            "use_ibl": True,
-            "use_sun": True,
-        },
-        "Less Bright day with sun at +Z": {
-            "ibl_intensity": 35000,
-            "sun_intensity": 50000,
-            "sun_dir": [0.577, 0.577, -0.577],
-            # "ibl_rotation":
-            "use_ibl": True,
-            "use_sun": True,
-        },
-        POINT_CLOUD_PROFILE_NAME: {
-            "ibl_intensity": 60000,
-            "sun_intensity": 50000,
-            "use_ibl": True,
-            "use_sun": False,
-            # "ibl_rotation":
-        },
-    }
-
-    DEFAULT_MATERIAL_NAME = "Polished ceramic [default]"
-    PREFAB = {
-        DEFAULT_MATERIAL_NAME: {
-            "metallic": 0.0,
-            "roughness": 0.7,
-            "reflectance": 0.5,
-            "clearcoat": 0.2,
-            "clearcoat_roughness": 0.2,
-            "anisotropy": 0.0
-        },
-        "Metal (rougher)": {
-            "metallic": 1.0,
-            "roughness": 0.5,
-            "reflectance": 0.9,
-            "clearcoat": 0.0,
-            "clearcoat_roughness": 0.0,
-            "anisotropy": 0.0
-        },
-        "Metal (smoother)": {
-            "metallic": 1.0,
-            "roughness": 0.3,
-            "reflectance": 0.9,
-            "clearcoat": 0.0,
-            "clearcoat_roughness": 0.0,
-            "anisotropy": 0.0
-        },
-        "Plastic": {
-            "metallic": 0.0,
-            "roughness": 0.5,
-            "reflectance": 0.5,
-            "clearcoat": 0.5,
-            "clearcoat_roughness": 0.2,
-            "anisotropy": 0.0
-        },
-        "Glazed ceramic": {
-            "metallic": 0.0,
-            "roughness": 0.5,
-            "reflectance": 0.9,
-            "clearcoat": 1.0,
-            "clearcoat_roughness": 0.1,
-            "anisotropy": 0.0
-        },
-        "Clay": {
-            "metallic": 0.0,
-            "roughness": 1.0,
-            "reflectance": 0.5,
-            "clearcoat": 0.1,
-            "clearcoat_roughness": 0.287,
-            "anisotropy": 0.0
-        },
-    }
-
-    def __init__(self):
-        self.mouse_model = gui.SceneWidget.Controls.ROTATE_CAMERA
-        self.bg_color = gui.Color(1, 1, 1)
-        self.show_skybox = False
-        self.show_axes = False
-        self.use_ibl = True
-        self.use_sun = True
-        self.new_ibl_name = None  # clear to None after loading
-        self.ibl_intensity = 45000
-        self.sun_intensity = 45000
-        self.sun_dir = [0.577, -0.577, -0.577]
-        self.sun_color = gui.Color(1, 1, 1)
-
-        self.apply_material = True  # clear to False after processing
-        self._materials = {
-            Settings.LIT: rendering.MaterialRecord(),
-            Settings.UNLIT: rendering.MaterialRecord(),
-            Settings.NORMALS: rendering.MaterialRecord(),
-            Settings.DEPTH: rendering.MaterialRecord()
-        }
-        self._materials[Settings.LIT].base_color = [0.9, 0.9, 0.9, 1.0]
-        self._materials[Settings.LIT].shader = Settings.LIT
-        self._materials[Settings.UNLIT].base_color = [0.9, 0.9, 0.9, 1.0]
-        self._materials[Settings.UNLIT].shader = Settings.UNLIT
-        self._materials[Settings.NORMALS].shader = Settings.NORMALS
-        self._materials[Settings.DEPTH].shader = Settings.DEPTH
-
-        # Conveniently, assigning from self._materials[...] assigns a reference,
-        # not a copy, so if we change the property of a material, then switch
-        # to another one, then come back, the old setting will still be there.
-        self.material = self._materials[Settings.UNLIT]
-
-    def set_material(self, name):
-        self.material = self._materials[name]
-        self.apply_material = True
-
-    def apply_material_prefab(self, name):
-        assert (self.material.shader == Settings.LIT)
-        prefab = Settings.PREFAB[name]
-        for key, val in prefab.items():
-            setattr(self.material, "base_" + key, val)
-
-    def apply_lighting_profile(self, name):
-        profile = Settings.LIGHTING_PROFILES[name]
-        for key, val in profile.items():
-            setattr(self, key, val)
-
-class VTD_Visualization:
-
-    MENU_OPEN = 1
-    MENU_EXPORT = 2
-    MENU_QUIT = 3
-    MENU_SHOW_SETTINGS = 11
-    MENU_ABOUT = 21
-
-    def __init__(self, 
+    def __init__(self,
         data : RGBDnT,
         pinhole,
+        win_name : str = 'VTD Visualization',
         win_width : int = 200, 
         win_height : int = 200
-    ):
+    ) -> None:
+        self.__data = data
+        self._pinhole = pinhole
+        self.win_name = win_name
+        self.win_width = win_width
+        self.win_height = win_height
+        self.__first_initialize = True
         # Initialize the settings
-        self.__init_settings()
+        self.__initialize_settings()
+        # Initialize the window gui
+        self.__initialize_window()
+        # Initialize the events
+        self.__initialize_events()
+        # Apply Settings
+        self.apply_settings()
+
+    def __initialize_settings(self):
+        self.settings = DotMap()
+        # Set Background Color
+        self.settings.background_color = gui.Color(1, 1, 1)
+        self.settings.show_skybox = False
+        self.settings.show_axes = False
+        self.settings.apply_material = False
+        # Initialize materials
+        self.settings.materials.default = rendering.MaterialRecord()
+        self.settings.materials.default.point_size = 1
+        self.settings.materials.default.base_color = [0.9, 0.9, 0.9, 1.0]
+        self.settings.materials.default.shader = 'defaultUnlit'
+        # ####
+        self.settings.modality = Modalities.Visible_Depth
+
+    def __initialize_window(self):
         # Create the window instance
-        self.window = gui.Application.instance.create_window("Open3D", win_width, win_height)
+        self.window = gui.Application.instance.create_window(
+            self.win_name, self.win_width, self.win_height)
         # Create the 3D Widget
         self._scene = gui.SceneWidget()
         self._scene.scene = rendering.Open3DScene(self.window.renderer)
@@ -228,23 +101,20 @@ class VTD_Visualization:
         view_ctrls = gui.CollapsableVert(
             "View Controls", 0.25 * em, gui.Margins(em, 0, 0, 0))
         # Show Skymap (Checkbox)
-        self._show_skybox = gui.Checkbox("Show Skymap")
-        self._show_skybox.set_on_checked(self._on_show_skybox)
-        view_ctrls.add_child(self._show_skybox)
-
+        self.checkb_skybox = gui.Checkbox("Show Skymap")
+        view_ctrls.add_child(self.checkb_skybox)
         view_ctrls.add_fixed(separation_height)
+        #######
         grid = gui.VGrid(2, 0.25 * em)
-        # Select Background
-        self._bg_color = gui.ColorEdit()
-        self._bg_color.set_on_value_changed(self._on_bg_color)
+        # Select Background Color
+        self.background_color_edit = gui.ColorEdit()
         grid.add_child(gui.Label("Background"))
-        grid.add_child(self._bg_color)
+        grid.add_child(self.background_color_edit)
         # Select Point Cloud
-        grid.add_child(gui.Label("Point size"))
-        self._point_size = gui.Slider(gui.Slider.INT)
-        self._point_size.set_limits(1, 10)
-        self._point_size.set_on_value_changed(self._on_point_size)
-        grid.add_child(self._point_size)
+        grid.add_child(gui.Label("Point Size"))
+        self.psize_slider = gui.Slider(gui.Slider.INT)
+        self.psize_slider.set_limits(1, 10)
+        grid.add_child(self.psize_slider)
         view_ctrls.add_child(grid)
 
         self._settings_panel.add_child(view_ctrls)
@@ -253,12 +123,11 @@ class VTD_Visualization:
         modalities_ctrls = gui.CollapsableVert(
             "Modalities", 0.25 * em, gui.Margins(em, 0, 0, 0))
         grid = gui.VGrid(2, 0.25 * em)
-        self._modalities = gui.Combobox()
+        self.modalities = gui.Combobox()
         for m in Modalities:
-            self._modalities.add_item(m.label)
-        self._modalities.set_on_selection_changed(self._on_modalities)
+            self.modalities.add_item(m.label)
         grid.add_child(gui.Label("Modalities"))
-        grid.add_child(self._modalities)
+        grid.add_child(self.modalities)
         modalities_ctrls.add_child(grid)
 
         self._settings_panel.add_child(modalities_ctrls)
@@ -270,186 +139,194 @@ class VTD_Visualization:
         self._settings_panel.add_child(filters_ctrls)
         self._settings_panel.add_fixed(separation_height)
 
-        self.window.set_on_layout(self._on_layout)
         self.window.add_child(self._scene)
         self.window.add_child(self._settings_panel)
-
-        self.__init_menu()
-
-        self.__data = data
-        self._pinhole = pinhole
-        # self.set_point_cloud(self.__data.to_point_cloud_visible_o3d(pinhole))
-
-    def __init_menu(self):
-        # Application Menubar
+        ############# Menu #############
+        # The menubar is global, but we need to connect the menu items to the
+        # window, so that the window can call the appropriate function when the
+        # menu item is activated.
         if gui.Application.instance.menubar is None:
             # File Menu
             file_menu = gui.Menu()
-            file_menu.add_item("Open...", VTD_Visualization.MENU_OPEN)
-            file_menu.add_item("Export Current Image...", VTD_Visualization.MENU_EXPORT)
-            file_menu.add_separator()
-            file_menu.add_item("Quit", VTD_Visualization.MENU_QUIT)
-            # Settings Menu
-            settings_menu = gui.Menu()
-            settings_menu.add_item(
-                "Settings Panel",
-                VTD_Visualization.MENU_SHOW_SETTINGS)
-            settings_menu.set_checked(VTD_Visualization.MENU_SHOW_SETTINGS, True)
-
+            file_menu.add_item("Export Current Image...", VTD_Visualization.MENU_SCREENSHOT_EXPORT)
+            # Tools Menu
+            tools_menu = gui.Menu()
+            tools_menu.add_item("Settings Toolbar", VTD_Visualization.MENU_SHOW_SETTINGS)
+            tools_menu.set_checked(VTD_Visualization.MENU_SHOW_SETTINGS, True)
+            # Help Menu
+            help_menu = gui.Menu()
+            help_menu.add_item("About", VTD_Visualization.MENU_ABOUT)
+            # Main Menu
             menu = gui.Menu()
             menu.add_menu("File", file_menu)
-            menu.add_menu("Settings", settings_menu)
-            
+            menu.add_menu("Tools", tools_menu)
+            menu.add_menu("Help", help_menu)
             gui.Application.instance.menubar = menu
 
-            self.window.set_on_menu_item_activated(
-                VTD_Visualization.MENU_OPEN, 
-                self._on_menu_open)
-            self.window.set_on_menu_item_activated(
-                VTD_Visualization.MENU_EXPORT,
-                self._on_menu_export)
-            self.window.set_on_menu_item_activated(
-                VTD_Visualization.MENU_QUIT, 
-                self._on_menu_quit)
-            self.window.set_on_menu_item_activated(
-                VTD_Visualization.MENU_SHOW_SETTINGS,
-                self._on_menu_toggle_settings_panel)
+    def __initialize_events(self):
+        def on_skybox_checkbox(show):
+            self.settings.show_skybox = show
+            self.apply_settings()
 
-    def _on_layout(self, layout_context):
-        # The on_layout callback should set the frame (position + size) of every
-        # child correctly. After the callback is done the window will layout
-        # the grandchildren.
-        r = self.window.content_rect
-        self._scene.frame = r
-        width = 17 * layout_context.theme.font_size
-        height = min(
-            r.height,
-            self._settings_panel.calc_preferred_size(
-                layout_context, gui.Widget.Constraints()).height)
-        self._settings_panel.frame = gui.Rect(r.get_right() - width, 
-            r.y, width, height)
+        def on_background_color(new_color):
+            self.settings.background_color = new_color
+            self.apply_settings()
 
-    def _on_point_size(self, size):
-        self.settings.material.point_size = int(size)
-        self.settings.apply_material = True
-        self._apply_settings()
+        def on_point_size(size):
+            self.settings.materials.default.point_size = int(size)
+            self.settings.apply_material = True
+            self.apply_settings()
 
-    def _on_menu_toggle_settings_panel(self):
-        self._settings_panel.visible = not self._settings_panel.visible
-        gui.Application.instance.menubar.set_checked(
-            VTD_Visualization.MENU_SHOW_SETTINGS, self._settings_panel.visible)
+        def on_modality_changed(name, index):
+            self.settings.modality = Modalities.from_index(index)
+            self.settings.apply_material = True
+            self.apply_settings()
 
-    def _on_menu_quit(self):
-        gui.Application.instance.quit()
+        def on_layout(layout_context):
+            # The on_layout callback should set the frame (position + size) of every
+            # child correctly. After the callback is done the window will layout
+            # the grandchildren.
+            r = self.window.content_rect
+            self._scene.frame = r
+            width = 17 * layout_context.theme.font_size
+            height = min(r.height,
+                self._settings_panel.calc_preferred_size(
+                    layout_context, gui.Widget.Constraints()).height)
+            self._settings_panel.frame = gui.Rect(r.get_right() - width, 
+                r.y, width, height)
 
-    def _on_menu_open(self):
-        dlg = gui.FileDialog(gui.FileDialog.OPEN, "Choose file to load",
-                             self.window.theme)
-        dlg.add_filter(
-            ".ply .stl .fbx .obj .off .gltf .glb",
-            "Triangle mesh files (.ply, .stl, .fbx, .obj, .off, "
-            ".gltf, .glb)")
-        dlg.add_filter(
-            ".xyz .xyzn .xyzrgb .ply .pcd .pts",
-            "Point cloud files (.xyz, .xyzn, .xyzrgb, .ply, "
-            ".pcd, .pts)")
-        dlg.add_filter(".ply", "Polygon files (.ply)")
-        dlg.add_filter(".stl", "Stereolithography files (.stl)")
-        dlg.add_filter(".fbx", "Autodesk Filmbox files (.fbx)")
-        dlg.add_filter(".obj", "Wavefront OBJ files (.obj)")
-        dlg.add_filter(".off", "Object file format (.off)")
-        dlg.add_filter(".gltf", "OpenGL transfer files (.gltf)")
-        dlg.add_filter(".glb", "OpenGL binary transfer files (.glb)")
-        dlg.add_filter(".xyz", "ASCII point cloud files (.xyz)")
-        dlg.add_filter(".xyzn", "ASCII point cloud with normals (.xyzn)")
-        dlg.add_filter(".xyzrgb", "ASCII point cloud files with colors (.xyzrgb)")
-        dlg.add_filter(".pcd", "Point Cloud Data files (.pcd)")
-        dlg.add_filter(".pts", "3D Points files (.pts)")
-        dlg.add_filter("", "All files")
+        def on_export_dialog_done(filename):
+            self.window.close_dialog()
+            frame = self._scene.frame
+            self.export_image(filename, frame.width, frame.height)
 
-        # A file dialog MUST define on_cancel and on_done functions
-        dlg.set_on_cancel(self.window.close_dialog)
-        dlg.set_on_done(self._on_load_dialog_done)
-        self.window.show_dialog(dlg)
+        def on_menu_export():
+            dlg = gui.FileDialog(
+                gui.FileDialog.SAVE, 
+                "Choose file to save",
+                self.window.theme)
+            dlg.add_filter(".png", "PNG files (.png)")
+            dlg.set_on_cancel(lambda _: self.window.close_dialog())
+            dlg.set_on_done(on_export_dialog_done)
+            self.window.show_dialog(dlg)
 
-    def _on_load_dialog_done(self, filename):
-        self.window.close_dialog()
-        self.load(filename)
+        def on_menu_exit():
+            gui.Application.instance.quit()
 
-    def _on_menu_export(self):
-        dlg = gui.FileDialog(gui.FileDialog.SAVE, 
-            "Choose file to save", self.window.theme)
-        dlg.add_filter(".png", "PNG files (.png)")
-        dlg.set_on_cancel(self.window.close_dialog)
-        dlg.set_on_done(self._on_export_dialog_done)
-        self.window.show_dialog(dlg)
+        def on_menu_toggle_settings_panel():
+            self._settings_panel.visible = not self._settings_panel.visible
+            gui.Application.instance.menubar.set_checked(
+                VTD_Visualization.MENU_SHOW_SETTINGS, self._settings_panel.visible)
 
-    def _on_export_dialog_done(self, filename):
-        self.window.close_dialog()
-        frame = self._scene.frame
-        self.export_image(filename, frame.width, frame.height)
+        def on_menu_about():
+            # Show a simple dialog. Although the Dialog is actually a widget, you can
+            # treat it similar to a Window for layout and put all the widgets in a
+            # layout which you make the only child of the Dialog.
+            em = self.window.theme.font_size
+            dlg = gui.Dialog("About")
 
-    def load_visible(self):
-        self.set_point_cloud(self.__data.to_point_cloud_visible_o3d(self._pinhole))
-    
-    def load_thermal(self):
-        self.set_point_cloud(self.__data.to_point_cloud_thermal_o3d(self._pinhole))
+            # Add the text
+            dlg_layout = gui.Vert(em, gui.Margins(em, em, em, em))
+            dlg_layout.add_child(gui.Label("LeManchot-Fusion"))
 
-    def set_point_cloud(self, pc):
-        self._pcloud = pc
-        self._scene.scene.clear_geometry()
+            # Add the Ok button. We need to define a callback function to handle
+            # the click.
+            ok = gui.Button("OK")
+            ok.set_on_clicked(self.window.close_dialog)
 
-        if self._pcloud is not None:
-            if not self._pcloud.has_normals():
-                self._pcloud.estimate_normals()
-            self._pcloud.normalize_normals()
-            try:
-                self._scene.scene.add_geometry("__model__", 
-                    self._pcloud, self.settings.material)
-                bounds = self._pcloud.get_axis_aligned_bounding_box()
-                self._scene.setup_camera(60, bounds, bounds.get_center())
-            except Exception as e:
-                print(e)  
-        else:
-            print("[WARNING] Failed to load points")  
+            # We want the Ok button to be an the right side, so we need to add
+            # a stretch item to the layout, otherwise the button will be the size
+            # of the entire row. A stretch item takes up as much space as it can,
+            # which forces the button to be its minimum size.
+            h = gui.Horiz()
+            h.add_stretch()
+            h.add_child(ok)
+            h.add_stretch()
+            dlg_layout.add_child(h)
 
+            dlg.add_child(dlg_layout)
+            self.window.show_dialog(dlg)
 
-    def _on_modalities(self, name, index):
-        self.settings.modalities = Modalities.from_index(index)
-        if self.settings.modalities == Modalities.Visible_Depth:
-            self.load_visible()
-        elif self.settings.modalities == Modalities.Thermal_Depth:
-            self.load_thermal()
+        self.checkb_skybox.set_on_checked(on_skybox_checkbox)
+        self.background_color_edit.set_on_value_changed(on_background_color)
+        self.psize_slider.set_on_value_changed(on_point_size)
+        self.modalities.set_on_selection_changed(on_modality_changed)
+        self.window.set_on_layout(on_layout)
+        # Menu Events
+        self.window.set_on_menu_item_activated(VTD_Visualization.MENU_SCREENSHOT_EXPORT, on_menu_export)
+        self.window.set_on_menu_item_activated(VTD_Visualization.MENU_QUIT, on_menu_exit)
+        self.window.set_on_menu_item_activated(VTD_Visualization.MENU_SHOW_SETTINGS, on_menu_toggle_settings_panel)
+        self.window.set_on_menu_item_activated(VTD_Visualization.MENU_ABOUT, on_menu_about)
 
-        self._apply_settings()
-
-    def _on_bg_color(self, new_color):
-        self.settings.bg_color = new_color
-        self._apply_settings()
-
-    def _on_show_skybox(self, show):
-        self.settings.show_skybox = show
-        self._apply_settings()
-
-    def __init_settings(self):
-        self.settings = Settings()
-
-    def _apply_settings(self):
+    def apply_settings(self):
+        # Render the Scene
+        self.render()
         # Skymap
         self._scene.scene.show_skybox(self.settings.show_skybox)
-        self._show_skybox.checked = self.settings.show_skybox
+        self.checkb_skybox.checked = self.settings.show_skybox
         # Background
         bg_color = [
-            self.settings.bg_color.red, self.settings.bg_color.green,
-            self.settings.bg_color.blue, self.settings.bg_color.alpha
+            self.settings.background_color.red, 
+            self.settings.background_color.green,
+            self.settings.background_color.blue, 
+            self.settings.background_color.alpha
         ]
         self._scene.scene.set_background(bg_color)
-        self._bg_color.color_value = self.settings.bg_color
+        self.background_color_edit.color_value = self.settings.background_color
         # Point Cloud
-        self._point_size.double_value = self.settings.material.point_size
+        self.psize_slider.double_value = self.settings.materials.default.point_size
 
         if self.settings.apply_material:
-            self._scene.scene.update_material(self.settings.material)
+            self._scene.scene.update_material(self.settings.materials.default)
             self.settings.apply_material = False
 
+    def render(self):
+        point_cloud = None
+        if self.settings.modality == Modalities.Visible_Depth:
+            point_cloud = self.__data.to_point_cloud_visible_o3d(
+                self._pinhole, calc_normals=True)
+            self.settings.materials.default.shader = VTD_Visualization.UNLIT
+        elif self.settings.modality == Modalities.Thermal_Depth:
+            point_cloud = self.__data.to_point_cloud_thermal_o3d(
+                self._pinhole, calc_normals=True, remove_invalids=True)
+            self.settings.materials.default.shader = VTD_Visualization.UNLIT
+        elif self.settings.modality == Modalities.Normals:
+            point_cloud = self.__data.to_point_cloud_visible_o3d(self._pinhole, calc_normals=True)
+            self.settings.materials.default.shader = VTD_Visualization.NORMALS
+        elif self.settings.modality == Modalities.Fusion:
+            pcv = self.__data.to_point_cloud_visible_o3d(self._pinhole, calc_normals=True)
+            pct = self.__data.to_point_cloud_thermal_o3d(self._pinhole, calc_normals=True)
+
+            temps = np.asarray(pct.colors)
+            colors = np.asarray(pcv.colors)
+            temps_v = np.mean(temps, axis=1)
+
+            colors[temps_v > 0, :] = temps[temps_v > 0, :]
+            pcv.colors = o3d.utility.Vector3dVector(colors)
+            point_cloud = pcv
+        else:
+            raise NotImplemented('The modality is not implemented!')
+
         self._scene.scene.clear_geometry()
+        try:
+            self._scene.scene.add_geometry("__model__", 
+                point_cloud, self.settings.materials.default)
+            if self.__first_initialize:
+                bounds = point_cloud.get_axis_aligned_bounding_box()
+                self._scene.setup_camera(60, bounds, bounds.get_center())
+                self.__first_initialize = False
+        except Exception as e:
+            print(e)
+
+    def export_image(self, path, width, height):
+
+        def on_image(image):
+            img = image
+            quality = 9  # png
+            if path.endswith(".jpg"):
+                quality = 100
+            o3d.io.write_image(path, img, quality)
+
+        self._scene.scene.scene.render_to_image(on_image)
+ 
+

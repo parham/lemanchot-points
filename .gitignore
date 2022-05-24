@@ -5,3 +5,4 @@ phm/io/__pycache__/*
 phm/control_point_new.py
 system.log
 tmp/*
+results/fused.png

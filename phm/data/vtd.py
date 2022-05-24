@@ -108,14 +108,47 @@ class RGBDnT:
     
     def _convert_point_cloud_o3d(self,
         rgbd : o3d.geometry.RGBDImage,
-        intrinsic : o3d.camera.PinholeCameraIntrinsic):
-        return o3d.geometry.PointCloud.create_from_rgbd_image(
+        intrinsic : o3d.camera.PinholeCameraIntrinsic,
+        calc_normals : bool = False):
+        ps = o3d.geometry.PointCloud.create_from_rgbd_image(
             rgbd, intrinsic=intrinsic)
+        if calc_normals :
+            if not ps.has_normals():
+                ps.estimate_normals()
+            ps.normalize_normals()
+        return ps
 
     def to_point_cloud_visible_o3d(self,
-        intrinsic : o3d.camera.PinholeCameraIntrinsic):
-        return self._convert_point_cloud_o3d(self.to_RGBD_visible_o3d(), intrinsic)
+        intrinsic : o3d.camera.PinholeCameraIntrinsic,
+        calc_normals : bool = False):
+        return self._convert_point_cloud_o3d(self.to_RGBD_visible_o3d(), intrinsic, calc_normals)
     
     def to_point_cloud_thermal_o3d(self,
-        intrinsic : o3d.camera.PinholeCameraIntrinsic):
-        return self._convert_point_cloud_o3d(self.to_RGBD_thermal_o3d(), intrinsic)
+        intrinsic : o3d.camera.PinholeCameraIntrinsic,
+        calc_normals : bool = False,
+        remove_invalids : bool = False):
+
+        pct = self._convert_point_cloud_o3d(self.to_RGBD_thermal_o3d(), intrinsic, calc_normals)
+        if remove_invalids:
+            points = np.asarray(pct.points) 
+            temps = np.asarray(pct.colors)
+            temps_v = np.mean(temps, axis=1)
+
+            pct.points = o3d.utility.Vector3dVector(points[temps_v > 0, :])
+            pct.colors = o3d.utility.Vector3dVector(temps[temps_v > 0, :])
+        return pct
+
+    def to_point_cloud_fusion_o3d(self,
+        intrinsic : o3d.camera.PinholeCameraIntrinsic,
+        calc_normals : bool = False):
+
+        pcv = self.__data.to_point_cloud_visible_o3d(intrinsic, calc_normals=calc_normals)
+        pct = self.__data.to_point_cloud_thermal_o3d(intrinsic, calc_normals=calc_normals)
+
+        temps = np.asarray(pct.colors)
+        colors = np.asarray(pcv.colors)
+        temps_v = np.mean(temps, axis=1)
+
+        colors[temps_v > 0, :] = temps[temps_v > 0, :]
+        pcv.colors = o3d.utility.Vector3dVector(colors)
+        return pcv
