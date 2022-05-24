@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 pyexample_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 test_data_path = os.path.join(os.path.dirname(pyexample_path), 'test_data')
 
-
 def custom_draw_geometry(pcd):
     # The following code achieves the same effect as:
     # o3d.visualization.draw_geometries([pcd])
@@ -37,8 +36,7 @@ def custom_draw_geometry_with_rotation(pcd):
         ctr.rotate(10.0, 0.0)
         return False
 
-    o3d.visualization.draw_geometries_with_animation_callback([pcd],
-                                                              rotate_view)
+    o3d.visualization.draw_geometries_with_animation_callback([pcd], rotate_view)
 
 
 def custom_draw_geometry_load_option(pcd):
