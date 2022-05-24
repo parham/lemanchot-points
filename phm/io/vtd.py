@@ -57,7 +57,7 @@ def write_ply(file : str, data : RGBDnT, file_type : str):
     vertex = data.point_cloud
     is_text = True if file_type == 'ply_txt' else False
     # Create Vertex ([x,y,z], r, g, b)
-    pdata = PlyData(
+    PlyData(
         [
             PlyElement.describe(vertex, 'vertex', comments=['points (x,y,z, r,g,b, thermal)'])
         ], text=is_text, byte_order='=', comments=['Multi-modal Point Cloud (position : x y z, color : RGB, Thermal : single value']
@@ -86,3 +86,27 @@ def load_ply(file : str, file_type : str):
     pcs = PlyData.read(file)
     points = [np.array(x) for x in pcs['vertex']]
     return points
+
+def save_dual_point_cloud(
+    data : RGBDnT,
+    fid : str,
+    target_dir : str
+):
+    pct_file = os.path.join(target_dir, f'thermal_{fid}.ply')
+    pcv_file = os.path.join(target_dir, f'visible_{fid}.ply')
+    
+    pct = data.thermal_point_cloud()
+    pcv = data.visible_point_cloud()
+
+    # Save Thermal Point Cloud
+    PlyData(
+        [
+            PlyElement.describe(pct, 'vertex', comments=['points (x,y,z, thermal)'])
+        ], text=True, byte_order='=', comments=['Multi-modal Point Cloud (position : x y z, Thermal : single value']
+    ).write(pct_file)
+    # Save Visible Point Cloud
+    PlyData(
+        [
+            PlyElement.describe(pcv, 'vertex', comments=['points (x,y,z, r,g,b)'])
+        ], text=True, byte_order='=', comments=['Multi-modal Point Cloud (position : x y z, color : RGB']
+    ).write(pcv_file)
