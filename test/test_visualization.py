@@ -19,7 +19,7 @@ class Test_Visualization(unittest.TestCase):
         gui.Application.instance.initialize()
         w = VTD_Visualization(data, 
             load_pinhole('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/depth/camera_info.json'), 
-            'PHM Test', 1024, 768)
+            'PHM Visualization Test', 1024, 768)
 
         if len(sys.argv) > 1:
             path = sys.argv[1]

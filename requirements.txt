@@ -7,3 +7,5 @@ opencv-contrib-python
 plyfile
 DotMap
 imageio
+console-menu
+ansicolors
