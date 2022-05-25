@@ -9,3 +9,4 @@ DotMap
 imageio
 console-menu
 ansicolors
+progress

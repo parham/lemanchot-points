@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from functools import lru_cache
 from typing import Callable
+from progress.bar import ChargingBar, Bar
 
 from phm.data import MMEContainer, MMERecord
 from phm.data.vtd import RGBDnT
@@ -93,6 +94,7 @@ class VTD_Dataset(Dataset_LoadableFunc):
 
 def create_mme_dataset(
     root_dir : str, 
+    res_dir : str,
     file_type : str
 ):
     # Check the validity of root directory
@@ -110,7 +112,6 @@ def create_mme_dataset(
     
     existing_types = tuple(sub_folders.keys())
     # Create the result directory
-    res_dir = os.path.join(root_dir, file_type)
     file_extension = file_type
     Path(res_dir).mkdir(parents=True, exist_ok=True)
     # List all visible images
@@ -130,33 +131,36 @@ def create_mme_dataset(
         file_ids.append(ptn[0])
     # Generate the files
     matched = 0
-    for ptn in file_ids:
-        container = MMEContainer(cid=ptn)
-        # Check if find all modalities
-        modalities = {}
-        for (dtype, dfolder) in sub_folders.items():
-            fname = f'{str(dtype)}_{ptn}.png'
-            full_path = os.path.join(dfolder, fname)
-            if not os.path.isfile(full_path):
-                # logging.warning(f'{fname} does not exist!')
-                continue
-            modalities[dtype] = full_path
 
-        if len(modalities) == len(existing_types):
-            matched += 1        
-            # Add modalities to the container
-            for (dtype, fpath) in modalities.items():
-                container.add_entity(MMERecord(
-                    type=dtype,
-                    file=fpath,
-                    data=load_entity(dtype, fpath)
-                ))
-            # Save the container
-            save_mme(
-                os.path.join(res_dir, f'mme_{ptn}.{file_extension}'),
-                record=container,
-                file_type=file_type
-            )
+    with Bar('Creating MME Dataset', max=len(file_ids)) as bar:
+        for ptn in file_ids:
+            container = MMEContainer(cid=ptn)
+            # Check if find all modalities
+            modalities = {}
+            for (dtype, dfolder) in sub_folders.items():
+                fname = f'{str(dtype)}_{ptn}.png'
+                full_path = os.path.join(dfolder, fname)
+                if not os.path.isfile(full_path):
+                    # logging.warning(f'{fname} does not exist!')
+                    continue
+                modalities[dtype] = full_path
+
+            if len(modalities) == len(existing_types):
+                matched += 1        
+                # Add modalities to the container
+                for (dtype, fpath) in modalities.items():
+                    container.add_entity(MMERecord(
+                        type=dtype,
+                        file=fpath,
+                        data=load_entity(dtype, fpath)
+                    ))
+                # Save the container
+                save_mme(
+                    os.path.join(res_dir, f'mme_{ptn}.{file_extension}'),
+                    record=container,
+                    file_type=file_type
+                )
+            bar.next()
 
     print(f'Total : {len(file_ids)}, Matched : {matched}')
 
@@ -178,11 +182,14 @@ def create_vtd_dataset(
     align.load()
 
     dataset = Dataset_LoadableFunc(in_dir, in_type, load_mme)
-    for x in dataset:
-        fid = x[0]
-        data = x[1]
-        res = align.compute(data)
-        save_RGBDnT(os.path.join(target_dir, f'vtd_{fid}.mat'), res)
+
+    with Bar('Creating VTD Dataset', max=len(dataset)) as bar:
+        for x in dataset:
+            fid = x[0]
+            data = x[1]
+            res = align.compute(data)
+            save_RGBDnT(os.path.join(target_dir, f'vtd_{fid}.mat'), res)
+            bar.next()
 
 def create_point_cloud_dataset(
     in_dir : str,
@@ -196,14 +203,17 @@ def create_point_cloud_dataset(
     Path(target_dir).mkdir(parents=True, exist_ok=True)
     dataset = VTD_Dataset(in_dir)
     file_extension = ftype_to_filext(file_type)
-    for x in dataset:
-        fid = x[0]
-        data = x[1]
-        save_point_cloud(
-            file=os.path.join(target_dir,f'pcs_{fid}.{file_extension}'),
-            data=data,
-            file_type=file_type
-        )
+
+    with Bar('Creating Point Cloud Dataset', max=len(dataset)) as bar:
+        for x in dataset:
+            fid = x[0]
+            data = x[1]
+            save_point_cloud(
+                file=os.path.join(target_dir,f'pcs_{fid}.{file_extension}'),
+                data=data,
+                file_type=file_type
+            )
+            bar.next()
 
 def create_dual_point_cloud(in_dir : str, target_dir : str):
     if not os.path.isdir(in_dir):
@@ -211,7 +221,10 @@ def create_dual_point_cloud(in_dir : str, target_dir : str):
     
     Path(target_dir).mkdir(parents=True, exist_ok=True)
     dataset = VTD_Dataset(in_dir)
-    for x in dataset:
-        fid = x[0]
-        data = x[1]
-        save_dual_point_cloud(data, fid, target_dir)
+
+    with ChargingBar('Processing', max=len(dataset)) as bar:
+        for x in dataset:
+            fid = x[0]
+            data = x[1]
+            save_dual_point_cloud(data, fid, target_dir)
+        bar.next()

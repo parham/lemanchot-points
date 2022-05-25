@@ -10,6 +10,8 @@ from colors import color
 from dotmap import DotMap
 from configparser import ConfigParser
 
+from phm.dataset import create_mme_dataset, create_point_cloud_dataset, create_vtd_dataset
+
 class CLI_Tool:
     def __init__(self) -> None:
         self.settings = DotMap()
@@ -52,17 +54,46 @@ Repository: https://github.com/parham/lemanchot-fusion
 
     def on_load_settings(self):
         __info_file = os.path.join(self.settings.root_dir, 'ds.ini')
-        if os.path.isfile(__info_file):
+        if not os.path.isfile(__info_file):
             print(color('ds.inf', fg='red'))
             return
         self.__load_init_settings(__info_file)
     
+    def on_create_mme_dataset(self):
+        rgbdt_dir = os.path.join(self.settings.root_dir, self.settings.modalities.rgbdt_dir)
+        create_mme_dataset(
+            root_dir = self.settings.root_dir,
+            res_dir = rgbdt_dir,
+            file_type = 'mat'
+        )
+    
+    def on_create_vtd_dataset(self):
+        rgbdt_dir = os.path.join(self.settings.root_dir, self.settings.modalities.rgbdt_dir)
+        vdt_dir = os.path.join(self.settings.root_dir, self.settings.modalities.vtd_dir)
+        depth_param_file = os.path.join(self.settings.root_dir, self.settings.modalities.depth_param_file)
+        create_vtd_dataset(
+            in_dir=rgbdt_dir,
+            target_dir=vdt_dir,
+            depth_param_file=depth_param_file,
+            in_type='mat'
+        )
+    
+    def on_create_point_cloud_dataset(self):
+        vdt_dir = os.path.join(self.settings.root_dir, self.settings.modalities.vtd_dir)
+        pc_dir = os.path.join(self.settings.root_dir, self.settings.modalities.point_cloud_dir)
+        create_point_cloud_dataset(
+            in_dir = vdt_dir,
+            target_dir = pc_dir,
+            file_type='ply_txt'
+        )
+
     def __load_init_settings(self, fs):
         config = ConfigParser()
         config.read(fs)
         for sec in config.sections():
             for key in config[sec]:
                 self.settings[sec][key] = config[sec][key]
+        print(config)
 
     def run(self):
         menu = ConsoleMenu(color("LeManchot-Fusion", fg='blue'),
@@ -70,10 +101,16 @@ Repository: https://github.com/parham/lemanchot-fusion
             prologue_text=self.tool_discription,
             formatter=self.menu_format)
 
-        menu_set_root_dir = FunctionItem("Set/Change Root Directory ", self.on_set_root_dir)
+        menu_set_root_dir = FunctionItem("Set/Change Root Directory", self.on_set_root_dir)
         menu_load_settings = FunctionItem("Load Settings", self.on_load_settings)
+        menu_create_mme_dataset = FunctionItem("Create RGBD&T Dataset (MME)", self.on_create_mme_dataset)
+        menu_create_vtd_dataset = FunctionItem("Create VTD Dataset", self.on_create_vtd_dataset)
+        menu_create_pc_dataset = FunctionItem("Create Point Cloud Dataset", self.on_create_point_cloud_dataset)
         menu.append_item(menu_set_root_dir)
         menu.append_item(menu_load_settings)
+        menu.append_item(menu_create_mme_dataset)
+        menu.append_item(menu_create_vtd_dataset)
+        menu.append_item(menu_create_pc_dataset)
         menu.show()
 
 def main():
