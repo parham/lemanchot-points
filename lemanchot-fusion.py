@@ -71,11 +71,14 @@ Repository: https://github.com/parham/lemanchot-fusion
         rgbdt_dir = os.path.join(self.settings.root_dir, self.settings.modalities.rgbdt_dir)
         vdt_dir = os.path.join(self.settings.root_dir, self.settings.modalities.vtd_dir)
         depth_param_file = os.path.join(self.settings.root_dir, self.settings.modalities.depth_param_file)
+        h_fid = self.settings.calibration.calib_ref_id if \
+            'calib_ref_id' in self.settings.calibration else None
         create_vtd_dataset(
             in_dir=rgbdt_dir,
             target_dir=vdt_dir,
             depth_param_file=depth_param_file,
-            in_type='mat'
+            in_type='mat', 
+            homography_fid=h_fid
         )
     
     def on_create_point_cloud_dataset(self):

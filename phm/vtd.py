@@ -1,4 +1,5 @@
 
+import logging
 import os
 import cv2
 import json
@@ -14,7 +15,6 @@ from phm.data import MMEContainer, RGBDnT
 from phm.data.vtd import __depth_scale__
 
 __homography__ = 'homography'
-
 
 def rgbdt_to_array3d(data : np.ndarray):
     height, width, channel = data.shape
@@ -75,11 +75,17 @@ class VTD_Alignment:
         target_dir : str = None,
         depth_param_file : str = None
     ) -> None:
-        self._homography = None
-        self._depth_params = None
         self.target_dir = target_dir if target_dir is not None else os.getcwd()
+        # Load Homography
+        self._homography = None
         self.homography_file = os.path.join(self.target_dir, 'homography.mat')
-        self.depth_param_file = depth_param_file 
+        if os.path.isfile(self.homography_file):
+            self._homography = load_homography(self.homography_file, silent=False)
+            logging.info(f'Homography matrix is loaded ({self.homography_file})')
+        # Load Depth Camera Parameters
+        self.depth_param_file = depth_param_file
+        self._depth_params = load_depth_camera_params(self.depth_param_file)
+        logging.info(f'Depth camera parameters are loaded ({self.depth_param_file})')
 
     @property
     def homography(self):
@@ -103,6 +109,19 @@ class VTD_Alignment:
             cx = p_x, cy = p_y
         )
 
+    def estimate_alignment_params(self, dt):
+        if self.homography is not None:
+            return
+        data = dt[1]
+        # STEP 01 : Run control point selector toolbox
+        cps = cpselect(data['thermal'].data, data['visible'].data)
+        source, dest = self.cp_to_opencv(cps)
+        # STEP 02 : estimate homography transformation
+        h, _ = cv2.findHomography(source, dest)
+        self._homography = h
+        # Save homography
+        save_homography(self.homography_file, self.homography)
+
     def cp_to_opencv(self, cps : List):
         source = np.zeros((len(cps), 2))
         dest = np.zeros((len(cps), 2))
@@ -117,34 +136,15 @@ class VTD_Alignment:
     def reset(self):
         self._homography = None
 
-    def save(self):
-        # Save homography
-        save_homography(self.homography_file, self.homography)
-
-    def load(self) -> bool:
-        # Load Homography
-        self._homography = load_homography(self.homography_file, silent=True)
-        # Load Depth Camera Parameters
-        self._depth_params = load_depth_camera_params(self.depth_param_file)
-
-    def __init(self, data : MMEContainer):
-        if self._homography is not None:
-            return
-        # STEP 01 : Run control point selector toolbox
-        cps = cpselect(data['thermal'].data, data['visible'].data)
-        source, dest = self.cp_to_opencv(cps)
-        # STEP 02 : estimate homography transformation
-        h, _ = cv2.findHomography(source, dest)
-        self._homography = h
-        self.save()
-
     def __align(self, data : MMEContainer) -> RGBDnT:
         if not self.__thermal__ in data.modality_names or \
            not self.__visible__ in data.modality_names or \
            not self.__depth__ in data.modality_names:
             raise ValueError(f'Data container does not have {self._src_type} or {self._dsc_type}')
         # Check homography availability
-        self.__init(data)
+        if self.homography is None:
+            # raise ValueError('Homography matrix is required for modality alignment. First, call estimate_alignment_param function!')
+            self.estimate_alignment_params(data)
         # Corrent the thermal image
         thermal = modal_to_image(data[self.__thermal__].data)
         visible = data[self.__visible__].data

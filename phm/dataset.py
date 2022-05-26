@@ -75,6 +75,16 @@ class Dataset_LoadableFunc(Dataset):
         return len(self.data)
     
     @lru_cache(maxsize=10)
+    def get_by_fid(self, fid : str):
+        index = 0
+        try:
+            index = [x[0] for x in self.data].index(fid)
+            return self.get(index)
+        except ValueError as ex:
+            logging.exception(ex)
+            raise ValueError(f'fid ({fid}) does not exist!')
+
+    @lru_cache(maxsize=10)
     def get(self, index : int):
         if index >= len(self):
             raise StopIteration
@@ -168,7 +178,8 @@ def create_vtd_dataset(
     in_dir : str,
     target_dir : str,
     depth_param_file : str,
-    in_type : str):
+    in_type : str,
+    homography_fid : str = None):
     
     if not os.path.isdir(in_dir):
         raise ValueError('Data directory does not exist!')
@@ -179,9 +190,10 @@ def create_vtd_dataset(
         target_dir=target_dir,
         depth_param_file=depth_param_file
     )
-    align.load()
-
     dataset = Dataset_LoadableFunc(in_dir, in_type, load_mme)
+    # Estimate Alignment Parameters
+    if homography_fid is not None:
+        align.estimate_alignment_params(dataset.get_by_fid(homography_fid))
 
     with Bar('Creating VTD Dataset', max=len(dataset)) as bar:
         for x in dataset:

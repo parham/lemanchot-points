@@ -16,12 +16,12 @@ from phm.vtd import VTD_Alignment
 class Test_VTD(unittest.TestCase):
 
     def test_compute_o3d(self):
-        data = load_mme('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/mat/mme_1625604430816.mat', 'mat')
+        data = load_mme('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/rgbdt/mme_1625604430816.mat', 'mat')
         vtd = VTD_Alignment(
             target_dir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/vtd',
             depth_param_file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/depth/camera_info.json'
         )
-        vtd.load()
+        vtd.estimate_alignment_params(data)
         rgbdt = vtd.compute(data)
         pt_rgb = rgbdt.to_point_cloud_visible_o3d(vtd.pinhole_camera)
         pt_thermal = rgbdt.to_point_cloud_thermal_o3d(vtd.pinhole_camera)
@@ -33,12 +33,12 @@ class Test_VTD(unittest.TestCase):
         viz_obj.destroy_window()
 
     def test_compute_np(self):
-        data = load_mme('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/mat/mme_1625604430816.mat', 'mat')
+        data = load_mme('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/rgbdt/mme_1625604430816.mat', 'mat')
         vtd = VTD_Alignment(
             target_dir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/vtd',
             depth_param_file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/depth/camera_info.json'
         )
-        vtd.load()
+        vtd.estimate_alignment_params(data)
         rgbdt = vtd.compute(data)
         save_point_cloud('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/test.ply', rgbdt, 'ply_txt')
         load_point_cloud('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/test.ply', file_type='ply_txt')
