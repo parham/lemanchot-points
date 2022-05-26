@@ -10,7 +10,7 @@ from colors import color
 from dotmap import DotMap
 from configparser import ConfigParser
 
-from phm.dataset import create_mme_dataset, create_point_cloud_dataset, create_vtd_dataset
+from phm.dataset import create_dual_point_cloud_dataset, create_mme_dataset, create_point_cloud_dataset, create_vtd_dataset
 
 class CLI_Tool:
     def __init__(self) -> None:
@@ -90,6 +90,14 @@ Repository: https://github.com/parham/lemanchot-fusion
             file_type='ply_txt'
         )
 
+    def on_create_dual_point_cloud_dataset(self):
+        vdt_dir = os.path.join(self.settings.root_dir, self.settings.modalities.vtd_dir)
+        pc_dir = os.path.join(self.settings.root_dir, self.settings.modalities.dual_point_cloud_dir)
+        create_dual_point_cloud_dataset(
+            in_dir = vdt_dir,
+            target_dir = pc_dir
+        )
+
     def __load_init_settings(self, fs):
         config = ConfigParser()
         config.read(fs)
@@ -109,11 +117,13 @@ Repository: https://github.com/parham/lemanchot-fusion
         menu_create_mme_dataset = FunctionItem("Create RGBD&T Dataset (MME)", self.on_create_mme_dataset)
         menu_create_vtd_dataset = FunctionItem("Create VTD Dataset", self.on_create_vtd_dataset)
         menu_create_pc_dataset = FunctionItem("Create Point Cloud Dataset", self.on_create_point_cloud_dataset)
+        menu_create_dual_pc_dataset = FunctionItem("Create Dual Point Cloud Dataset", self.on_create_dual_point_cloud_dataset)
         menu.append_item(menu_set_root_dir)
         menu.append_item(menu_load_settings)
         menu.append_item(menu_create_mme_dataset)
         menu.append_item(menu_create_vtd_dataset)
         menu.append_item(menu_create_pc_dataset)
+        menu.append_item(menu_create_dual_pc_dataset)
         menu.show()
 
 def main():

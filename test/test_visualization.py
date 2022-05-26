@@ -14,11 +14,11 @@ from phm.vtd import load_pinhole
 
 class Test_Visualization(unittest.TestCase):
     def test_win_app(self):
-        data = load_RGBDnT('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/vtd/vtd_1625604434719.mat')
+        data = load_RGBDnT('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/vtd/vtd_1626967976820.mat')
         
         gui.Application.instance.initialize()
         w = VTD_Visualization(data, 
-            load_pinhole('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210706_multi_modal/depth/camera_info.json'), 
+            load_pinhole('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/depth/camera_info.json'), 
             'PHM Visualization Test', 1024, 768)
 
         if len(sys.argv) > 1:

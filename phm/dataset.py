@@ -208,7 +208,6 @@ def create_point_cloud_dataset(
     target_dir : str,
     file_type : str
 ):
-
     if not os.path.isdir(in_dir):
         raise ValueError('RGBD&T directory does not exist!')
     
@@ -227,16 +226,16 @@ def create_point_cloud_dataset(
             )
             bar.next()
 
-def create_dual_point_cloud(in_dir : str, target_dir : str):
+def create_dual_point_cloud_dataset(in_dir : str, target_dir : str):
     if not os.path.isdir(in_dir):
         raise ValueError('RGBD&T directory does not exist!')
     
     Path(target_dir).mkdir(parents=True, exist_ok=True)
     dataset = VTD_Dataset(in_dir)
 
-    with ChargingBar('Processing', max=len(dataset)) as bar:
+    with Bar('Processing', max=len(dataset)) as bar:
         for x in dataset:
             fid = x[0]
             data = x[1]
             save_dual_point_cloud(data, fid, target_dir)
-        bar.next()
+            bar.next()
