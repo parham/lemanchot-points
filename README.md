@@ -15,6 +15,16 @@
   </p>
 </p>
 
+## LeManchot-Fusion
+
+The presented system provides different tools for working with multi-modal data which some of them are explained in below.
+
+### Multi-Modal Visualizer
+
+<p align="center">
+  <img src="resources/cli_tools.gif" width="800" title="MME Visualizer 1">
+</p>
+
 ## TODO
 - [X] Data Acquisition and Preparation
 - [X] Implement the method for generating RGBD&T data (automated fusion and alignment)
