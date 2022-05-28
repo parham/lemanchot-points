@@ -1,5 +1,6 @@
 
 
+from ast import Sub
 import os
 import glob
 import open3d as o3d
@@ -146,27 +147,52 @@ Repository: https://github.com/parham/lemanchot-fusion
         print(config)
 
     def run(self):
+        # Create main menu
         menu = ConsoleMenu(color("LeManchot-Fusion", fg='blue'),
             "The toolbox for fusion and processing of multi-modal data collected by LeManchot-DC system.",
             prologue_text=self.tool_discription,
             formatter=self.menu_format)
 
         menu_set_root_dir = FunctionItem("Set/Change Root Directory", self.on_set_root_dir)
-        menu_load_settings = FunctionItem("Load Settings", self.on_load_settings)
-        menu_create_mme_dataset = FunctionItem("Create RGBD&T Dataset (MME)", self.on_create_mme_dataset)
-        menu_create_vtd_dataset = FunctionItem("Create VTD Dataset", self.on_create_vtd_dataset)
-        menu_create_pc_dataset = FunctionItem("Create Point Cloud Dataset", self.on_create_point_cloud_dataset)
-        menu_create_dual_pc_dataset = FunctionItem("Create Dual Point Cloud Dataset", self.on_create_dual_point_cloud_dataset)
-        menu_visualize_mm_pc = FunctionItem("Visualize Multi-modal Point Cloud", self.on_visualize_mm_point_cloud)
-        menu_visualize_vtd = FunctionItem("Visualize RGBD&T Data", self.on_visualize_vtd_data)
         menu.append_item(menu_set_root_dir)
+        
+        menu_load_settings = FunctionItem("Load Settings", self.on_load_settings)
         menu.append_item(menu_load_settings)
-        menu.append_item(menu_create_mme_dataset)
-        menu.append_item(menu_create_vtd_dataset)
-        menu.append_item(menu_create_pc_dataset)
-        menu.append_item(menu_create_dual_pc_dataset)
-        menu.append_item(menu_visualize_mm_pc)
-        menu.append_item(menu_visualize_vtd)
+        
+        # Create "Create Multi-modal data" submenu
+        submenu_create = ConsoleMenu(title='Create Multi-modal Data', exit_option_text='Back to main menu')
+        
+        menu_create_mme_dataset = FunctionItem("Create RGBD&T Dataset (MME)", self.on_create_mme_dataset)
+        submenu_create.append_item(menu_create_mme_dataset)
+        
+        menu_create_vtd_dataset = FunctionItem("Create VTD Dataset", self.on_create_vtd_dataset)
+        submenu_create.append_item(menu_create_vtd_dataset)
+        
+        menu_create_pc_dataset = FunctionItem("Create Point Cloud Dataset", self.on_create_point_cloud_dataset)
+        submenu_create.append_item(menu_create_pc_dataset)
+        
+        menu_create_dual_pc_dataset = FunctionItem("Create Dual Point Cloud Dataset", self.on_create_dual_point_cloud_dataset)
+        submenu_create.append_item(menu_create_dual_pc_dataset)
+
+        submenu_create_item = SubmenuItem('Create Multi-modal Data', submenu=submenu_create)
+        submenu_create_item.set_menu(menu)
+        menu.append_item(submenu_create_item)
+
+        # Create "Visualize Multi-modal Data" submenu
+        submenu_visualize = ConsoleMenu(title='Visualize Multi-modal Data', exit_option_text='Back to main menu')
+        menu_viz_mme_data = FunctionItem("Visualize Multi-modal Data (MME)", self.on_visualize_vtd_data)
+        submenu_visualize.append_item(menu_viz_mme_data)
+
+        menu_viz_pc_data = FunctionItem("Visualize Multi-modal Point Cloud", self.on_visualize_mm_point_cloud)
+        submenu_visualize.append_item(menu_viz_pc_data)
+
+        submenu_visualize_item = SubmenuItem('Visualize Multi-modal Data', submenu=submenu_create)
+        submenu_visualize_item.set_menu(menu)
+        menu.append_item(submenu_visualize_item)
+
+        # Create "Process Multi-modal Data" submenu
+        submenu_process = ConsoleMenu(title='Process Multi-modal Data', exit_option_text='Back to main menu')
+
         menu.show()
 
 def main():
