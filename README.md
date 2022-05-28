@@ -22,9 +22,9 @@
       - [X] Using control points
       - [ ] Using board
 - [X] Implement the method for converting RGBD&T to multi-channel point cloud
-- [ ] Implement the visualization method for the point cloud.
+- [X] Implement the visualization method for the point cloud.
 - [ ] Implement the multi-point cloud registration method using maybe ICP or similar methods!
-- [ ] Implement the system visualization.
+- [X] Implement the system visualization.
 
 ## Team
 **Parham Nooralishahi** is a specialist in embedded and intelligent vision systems and currently is a Ph.D. student at Universite Laval working on developing drone-enabled techniques for the inspection of large and complex industrial components using multi-modal data processing. He is a researcher with a demonstrated history of working in the telecommunication industry and industrial inspection and in-depth expertise in robotics & drones, embedded systems, advanced computer vision and machine learning techniques. He has a Master’s degree in Computer Science (Artificial Intelligence). During his bachelor's degree, he was involved in designing and developing the controlling and monitoring systems for fixed-wing drone for search and rescue purposes. Also, during his Master's degree, he worked extensively on machine learning and computer vision techniques for robotic and soft computing applications.
