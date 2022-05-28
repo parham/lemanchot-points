@@ -1,6 +1,9 @@
 
 
 import os
+import glob
+import open3d as o3d
+import open3d.visualization.gui as gui
 
 from consolemenu import *
 from consolemenu.items import *
@@ -11,6 +14,9 @@ from dotmap import DotMap
 from configparser import ConfigParser
 
 from phm.dataset import create_dual_point_cloud_dataset, create_mme_dataset, create_point_cloud_dataset, create_vtd_dataset
+from phm.io.vtd import load_RGBDnT
+from phm.visualization import VTD_Visualization
+from phm.vtd import load_pinhole
 
 class CLI_Tool:
     def __init__(self) -> None:
@@ -98,6 +104,39 @@ Repository: https://github.com/parham/lemanchot-fusion
             target_dir = pc_dir
         )
 
+    def on_visualize_mm_point_cloud(self):
+        pc_dir = os.path.join(self.settings.root_dir, self.settings.modalities.point_cloud_dir)
+        fs = glob.glob(os.path.join(pc_dir, '*.ply'))
+        for f in fs:
+            print(os.path.basename(f))
+        pc_file = input('Enter the file name >> ')
+        pc_file = os.path.join(pc_dir, pc_file)
+        if not os.path.isfile(pc_file):
+            print(f'Invalid Filename! ({pc_file})')
+            return
+        # Visualization of o3d point cloud
+        pcd = o3d.io.read_point_cloud(pc_file)
+        o3d.visualization.draw_geometries([pcd])
+
+    def on_visualize_vtd_data(self):
+        pc_dir = os.path.join(self.settings.root_dir, self.settings.modalities.vtd_dir)
+        fs = glob.glob(os.path.join(pc_dir, '*.mat'))
+        for f in fs:
+            print(os.path.basename(f))
+        pc_file = input('Enter the file name >> ')
+        pc_file = os.path.join(pc_dir, pc_file)
+        if not os.path.isfile(pc_file):
+            print(f'Invalid Filename! ({pc_file})')
+            return
+        # Visualization of VTD data
+        pinhole = load_pinhole(os.path.join(self.settings.root_dir, self.settings.modalities.depth_param_file))
+        data = load_RGBDnT(pc_file)
+        gui.Application.instance.initialize()
+        w = VTD_Visualization(data, 
+            pinhole, 'PHM RGBD&T Visualization', 1024, 768)
+        gui.Application.instance.run()
+        print('VTD visualization is finished!')
+
     def __load_init_settings(self, fs):
         config = ConfigParser()
         config.read(fs)
@@ -118,12 +157,16 @@ Repository: https://github.com/parham/lemanchot-fusion
         menu_create_vtd_dataset = FunctionItem("Create VTD Dataset", self.on_create_vtd_dataset)
         menu_create_pc_dataset = FunctionItem("Create Point Cloud Dataset", self.on_create_point_cloud_dataset)
         menu_create_dual_pc_dataset = FunctionItem("Create Dual Point Cloud Dataset", self.on_create_dual_point_cloud_dataset)
+        menu_visualize_mm_pc = FunctionItem("Visualize Multi-modal Point Cloud", self.on_visualize_mm_point_cloud)
+        menu_visualize_vtd = FunctionItem("Visualize RGBD&T Data", self.on_visualize_vtd_data)
         menu.append_item(menu_set_root_dir)
         menu.append_item(menu_load_settings)
         menu.append_item(menu_create_mme_dataset)
         menu.append_item(menu_create_vtd_dataset)
         menu.append_item(menu_create_pc_dataset)
         menu.append_item(menu_create_dual_pc_dataset)
+        menu.append_item(menu_visualize_mm_pc)
+        menu.append_item(menu_visualize_vtd)
         menu.show()
 
 def main():
