@@ -12,5 +12,7 @@ intensity = pc.Intensity(valid_indices,:);
 res = pointCloud(pos, 'Color', colors, 'Intensity', intensity);
 res.Normal = pcnormals(res);
 
+res = pcdenoise(res);
+
 end
 
