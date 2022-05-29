@@ -39,20 +39,18 @@ end
 
 %% Consecutive Point Cloud Registration 
 
-tforms =
-for index = 2:d_count
-
-
 resulted_pc = pcs{1};
-accumTform = 0;
 for index = 2:d_count
     moving = pcs{index};
-    tform = pcregistericp(moving, resulted_pc, 'Metric','pointToPlane','Extrapolate', true);
+    tform = pcregistericp(moving, resulted_pc, 'Metric','pointToPoint','Extrapolate', true);
     moving_tf = pctransform(moving, tform);
     resulted_pc = pcmerge(resulted_pc, moving_tf, mergeSize);
+%     figure; pcshow(moving); title('Original');
+%     figure; pcshow(moving_tf); title('Transformed');
+%     figure; pcshow(resulted_pc); title('Registered');
 end
 
-figure; pcshow(resulted_pc, 'MarkerSize', 10);
+figure; pcshow(resulted_pc, 'MarkerSize', 20);
 title('Registered Point Cloud');
 
 
