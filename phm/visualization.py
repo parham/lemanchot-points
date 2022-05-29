@@ -11,6 +11,22 @@ from enum import Enum, unique
 
 from phm.data import RGBDnT
 
+def pick_points(data : RGBDnT):
+    print("====================================================")
+    print("Selecting Control Points in the given point cloud")
+    print("Pick the corresponding points using [shift + left click] (at least three correspondences)")
+    print("-- Press [shift + right click] to undo point picking")
+    print("After picking points, press 'Q' to close the window")
+    vis = o3d.visualization.VisualizerWithEditing()
+    vis.create_window()
+    vis.add_geometry(data.to_point_cloud_visible_o3d())
+    vis.run()  # the window is executed to let user select the points
+    vis.destroy_window()
+    print("====================================================")
+    points = vis.get_picked_points()
+    print(f'Total Selected Points >> {len(points)}')
+    return points
+
 @unique
 class Modalities(Enum):
     Visible_Depth = 0,

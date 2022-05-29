@@ -1,7 +1,6 @@
-import numpy as np
 import copy
+import numpy as np
 import open3d as o3d
-
 
 def demo_crop_geometry():
     print("Demo for manual geometry cropping")
@@ -17,7 +16,6 @@ def demo_crop_geometry():
     pcd = o3d.io.read_point_cloud(pcd_data.paths[0])
     o3d.visualization.draw_geometries_with_editing([pcd])
 
-
 def draw_registration_result(source, target, transformation):
     source_temp = copy.deepcopy(source)
     target_temp = copy.deepcopy(target)
@@ -25,7 +23,6 @@ def draw_registration_result(source, target, transformation):
     target_temp.paint_uniform_color([0, 0.651, 0.929])
     source_temp.transform(transformation)
     o3d.visualization.draw_geometries([source_temp, target_temp])
-
 
 def pick_points(pcd):
     print("")
@@ -41,7 +38,6 @@ def pick_points(pcd):
     vis.destroy_window()
     print("")
     return vis.get_picked_points()
-
 
 def demo_manual_registration():
     print("Demo for manual ICP")
@@ -74,7 +70,6 @@ def demo_manual_registration():
         o3d.pipelines.registration.TransformationEstimationPointToPoint())
     draw_registration_result(source, target, reg_p2p.transformation)
     print("")
-
 
 if __name__ == "__main__":
     demo_crop_geometry()

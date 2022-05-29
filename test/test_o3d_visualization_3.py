@@ -751,7 +751,6 @@ class AppWindow:
 
         self._scene.scene.scene.render_to_image(on_image)
 
-
 def main():
     # We need to initalize the application, which finds the necessary shaders
     # for rendering and prepares the cross-platform window abstraction.
