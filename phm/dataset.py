@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from functools import lru_cache
 from typing import Callable
-from progress.bar import ChargingBar, Bar
+from progress.bar import Bar
 
 from phm.data import MMEContainer, MMERecord
 from phm.data.vtd import RGBDnT

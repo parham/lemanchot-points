@@ -6,7 +6,6 @@ from plyfile import PlyData, PlyElement
 from typing import List, Tuple, Union
 from scipy.io import savemat, loadmat
 from phm.data import RGBDnT
-from phm.vtd import rgbdt_to_array3d
 
 __rgbdt__ = 'rgbdt'
 __fid__ = 'fid'

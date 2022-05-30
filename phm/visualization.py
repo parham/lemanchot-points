@@ -8,7 +8,6 @@ import open3d.visualization.rendering as rendering
 
 from dotmap import DotMap
 from enum import Enum, unique
-
 from phm.data import RGBDnT
 
 def pick_points(data : RGBDnT):
