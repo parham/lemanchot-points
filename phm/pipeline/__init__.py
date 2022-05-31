@@ -2,8 +2,8 @@
 
 __all__ = [
     "core",
-    "phm_icp_pipeline"
+    "icp_pipeline"
 ]
 
 from .core import *
-from .phm_icp_pipeline import *
+from .icp_pipeline import *
