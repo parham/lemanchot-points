@@ -16,8 +16,8 @@ def draw_registration_result_original_color(source, target, transformation):
     source_temp.transform(transformation)
     o3d.visualization.draw_geometries([source_temp, target])
 
-source = o3d.io.read_point_cloud('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/pc/pcs_1626967965865.ply')
-target = o3d.io.read_point_cloud('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/pc/pcs_1626967976820.ply')
+source = o3d.io.read_point_cloud('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/pc/pcs_1626967963384.ply')
+target = o3d.io.read_point_cloud('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/pc/pcs_1626967973439.ply')
 
 voxel_radius = [0.04, 0.02, 0.01]
 max_iter = [50, 30, 14]
@@ -50,5 +50,5 @@ for scale in range(3):
     current_transformation = result_icp.transformation
     print(result_icp)
 
-draw_registration_result_original_color(source, target,
+    draw_registration_result_original_color(source, target,
                                         result_icp.transformation)

@@ -6,3 +6,4 @@ phm/control_point_new.py
 system.log
 tmp/*
 results/fused.png
+phm/pipeline/__pycache__/*

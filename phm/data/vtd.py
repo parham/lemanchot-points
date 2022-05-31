@@ -1,4 +1,5 @@
 
+from multiprocessing.sharedctypes import Value
 import os
 import numpy as np
 import open3d as o3d
@@ -18,7 +19,23 @@ class RGBDnT:
     @property
     def depth_image(self):
         return np.asarray(self.data[:,:,2] * __depth_scale__, np.uint16)
-    
+
+    @depth_image.setter
+    def depth_image(self, depth):
+        if not isinstance(depth, np.ndarray):
+            raise ValueError('The depth image should be numpy matrix!')
+        dsize = depth.shape
+        tsize = self.data.shape
+        # Check image dimensions
+        if dsize[0] != tsize[0] or dsize[1] != tsize[1]:
+            raise ValueError('The input depth image does not follow the RGBD&T dimension!')
+        # Check image channels
+        if len(dsize) > 2 and dsize[2] > 1:
+            raise ValueError('Depth Image cannot have multiple channels!')
+        # Convert the image to proper format
+        tmp = (depth / __depth_scale__).astype(self.data.dtype)
+        self.data[:,:,2] = tmp
+
     @property
     def visible_image(self):
         return np.asarray(self.data[:,:,3:-1], np.uint8)
@@ -109,7 +126,7 @@ class RGBDnT:
     def _convert_point_cloud_o3d(self,
         rgbd : o3d.geometry.RGBDImage,
         intrinsic : o3d.camera.PinholeCameraIntrinsic,
-        calc_normals : bool = False):
+        calc_normals : bool = True):
         ps = o3d.geometry.PointCloud.create_from_rgbd_image(
             rgbd, intrinsic=intrinsic)
         if calc_normals :

@@ -8,41 +8,35 @@ from phm.data import RGBDnT
 from phm.io import load_RGBDnT
 
 class Pipeline:
-    def __init__(self, file_list : List[str]):
+    def __init__(self, 
+        root_dir : str, 
+        filenames : List[str]
+    ):
+        self.root_dir = root_dir
         # Check file availability
-        if len(self.file_list):
+        if len(filenames) == 0:
             raise ValueError('No RGBD&T file exist!')
-            return
+        # Check Root Directory Availability
+        if not os.path.isdir(self.root_dir):
+            raise FileNotFoundError(f'{self.root_dir} does not exist!')
         # Initialize the file list
-        self._flist = list()
-        for f in file_list:
-            if os.path.isfile(file_list):
-                continue
-            self._flist.append(f)
-
-    def file_count(self):
-        return len(self._flist)
+        self.files = tuple(filter(lambda x : os.path.isfile(os.path.join(self.root_dir, x)), filenames))
 
     @property
-    def file_list(self):
-        return self._flist
+    def file_count(self):
+        return len(self.files)
 
-    def execute(self):
-        # 1. Load Data
-        frames = self._load_data()
-        # 2. Preprocessing RGBD&T data
-        
-    def _preprocessing(self, data):
-        
-    
-    def _load_data(self):
+    def load_data_frames(self):
         # Load Data
         frames = list()
         with Bar('Loading Data ', max=self.file_count) as bar:
-            for f in self.file_list:
+            for x in self.files:
+                f = os.path.join(self.root_dir, x)
                 frame = load_RGBDnT(f)
-                data = frame.data
-                frames.append(data)
+                frames.append(frame)
                 bar.next()
 
         return frames
+
+    def execute(self):
+        raise NotImplementedError('Execute method is not implemented yet!')
