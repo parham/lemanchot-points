@@ -23,7 +23,7 @@ pipobj = Pipeline([
 res = pipobj(batch)
 
 tmp = [th for (viz, th) in res['pcs']]
-o3d.visualization.draw_geometries([tmp[0]], mesh_show_wireframe=True)
+o3d.visualization.draw_geometries(tmp, mesh_show_wireframe=True)
 # print(res)
 
 # obj = pip.PHM_ICP_Pipeline(

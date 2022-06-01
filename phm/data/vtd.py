@@ -10,8 +10,30 @@ from dataclasses import dataclass
 
 __depth_scale__ = 1000
 
+class O3DPointCloudAdopter:
+    def get_thermal_point_cloud(self, **kwargs):
+        raise NotImplementedError('get_thermal_point_cloud is not implemented!')
+    
+    def get_visible_point_cloud(self, **kwargs):
+        raise NotImplementedError('get_visible_point_cloud is not implemented')
+    
+    def get_fused_point_cloud(self, **kwargs):
+        pcv = self.get_visible_point_cloud(**kwargs)
+        pct = self.get_thermal_point_cloud(**kwargs)
+
+        return self._fuse_point_cloud(pct, pcv)
+
+    def _fuse_point_cloud(self, pcv, pct):
+        temps = np.asarray(pct.colors)
+        colors = np.asarray(pcv.colors)
+        temps_v = np.mean(temps, axis=1)
+
+        colors[temps_v > 0, :] = temps[temps_v > 0, :]
+        pcv.colors = o3d.utility.Vector3dVector(colors)
+        return pcv
+
 @dataclass
-class RGBDnT:
+class RGBDnT(O3DPointCloudAdopter):
 
     data : np.ndarray # channels : X Y Z R G B & T
     fid : str = ''
@@ -162,10 +184,29 @@ class RGBDnT:
         pcv = self.__data.to_point_cloud_visible_o3d(intrinsic, calc_normals=calc_normals)
         pct = self.__data.to_point_cloud_thermal_o3d(intrinsic, calc_normals=calc_normals)
 
-        temps = np.asarray(pct.colors)
-        colors = np.asarray(pcv.colors)
-        temps_v = np.mean(temps, axis=1)
+        return self._fuse_point_cloud(pcv, pct)
 
-        colors[temps_v > 0, :] = temps[temps_v > 0, :]
-        pcv.colors = o3d.utility.Vector3dVector(colors)
-        return pcv
+    def get_visible_point_cloud(self, **kwargs):
+        return self.to_point_cloud_visible_o3d(
+            intrinsic = kwargs['intrinsic'], 
+            calc_normals = kwargs['calc_normals'] if 'calc_normals' in kwargs else None
+        )
+
+    def get_thermal_point_cloud(self, **kwargs):
+        return self.to_point_cloud_thermal_o3d(
+            intrinsic = kwargs['intrinsic'], 
+            calc_normals = kwargs['calc_normals'] if 'calc_normals' in kwargs else None,
+            remove_invalids = kwargs['remove_invalids'] if 'remove_invalids' in kwargs else None
+        )
+
+@dataclass
+class DualPointCloudPack(O3DPointCloudAdopter):
+
+    visible_pointcloud : o3d.geometry.PointCloud
+    thermal_pointcloud : o3d.geometry.PointCloud
+
+    def get_thermal_point_cloud(self, **kwargs):
+        return self.thermal_pointcloud 
+    
+    def get_visible_point_cloud(self, **kwargs):
+        return self.visible_pointcloud
