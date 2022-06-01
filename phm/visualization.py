@@ -1,6 +1,8 @@
 
+import copy
 import os
 import sys
+from typing import List
 import numpy as np
 import open3d as o3d
 import open3d.visualization.gui as gui
@@ -25,6 +27,22 @@ def pick_points(data : RGBDnT):
     points = vis.get_picked_points()
     print(f'Total Selected Points >> {len(points)}')
     return points
+
+def visualize_pointclouds_with_transformations(pcs : List, transformations : List):
+    if len(pcs) == 0 or len(transformations) == 0:
+        raise ValueError('Pointclouds or transformations are not given!')
+    if len(pcs) != len(transformations):
+        raise ValueError('Pointclouds and transformations must have same size')
+    
+    res = []
+    index = 0
+    for index in range(len(pcs)):
+        pc = pcs[index]
+        tmp = copy.deepcopy(pc)
+        tmp.transform(transformations[index])
+        res.append(tmp)
+        index += 1
+    o3d.visualization.draw_geometries(res)
 
 @unique
 class Modalities(Enum):

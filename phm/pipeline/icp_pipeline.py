@@ -15,13 +15,12 @@ from phm.data.vtd import __depth_scale__
 from phm.pipeline import Pipeline
 from phm.pipeline.core import PipelineStep
 
-from phm.visualization import VTD_Visualization
+from phm.visualization import VTD_Visualization, visualize_pointclouds_with_transformations
 from phm.vtd import load_pinhole
 import open3d.visualization.gui as gui
 
 class ColoredICPRegistar_Step(PipelineStep):
     def __init__(self,
-        depth_params_file : str,
         voxel_radius = [0.04, 0.02, 0.01],
         max_iter = [50, 30, 16],
         data_batch_key : str = 'batch'
@@ -29,7 +28,6 @@ class ColoredICPRegistar_Step(PipelineStep):
         super().__init__({
             'batch' : data_batch_key
         })
-        self.depth_params = load_pinhole(depth_params_file)
         self.voxel_radius = voxel_radius
         self.max_iter = max_iter
     
@@ -75,7 +73,7 @@ class ColoredICPRegistar_Step(PipelineStep):
             last_transformation = transformations[-1]
             updated_transformation = current_transformation * last_transformation
             transformations.append(updated_transformation)
-            return transformations
+        return transformations
 
     def _impl_func(self, **kwargs):
         batch = kwargs['batch']
@@ -83,13 +81,20 @@ class ColoredICPRegistar_Step(PipelineStep):
         # This is implementation of following paper
         # J. Park, Q.-Y. Zhou, V. Koltun,
         # Colored Point Cloud Registration Revisited, ICCV 2017
+        res = []
         print('Registering using Colored ICP method ...')
         transformations = self._calc_transform(batch)
-        for index in range(transformations):
+        for index in range(len(transformations)):
             trans = transformations[index]
             pcviz, pcth = batch[index]
             pcviz.transform(trans)
             pcth.transform(trans)
+            res.append((pcviz, pcth))
+
+        return {
+            'pcs' : res 
+        }
+        
 
 
 class PHM_ICP_Pipeline (Pipeline):

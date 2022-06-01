@@ -90,7 +90,7 @@ class ConvertToPC_Step(PipelineStep):
     def __convert_pc(self, data : RGBDnT):
         return (
             data.to_point_cloud_visible_o3d(self.depth_params, False),
-            data.to_point_cloud_thermal_o3d(self.depth_params, False)
+            data.to_point_cloud_thermal_o3d(self.depth_params, False, True)
         )
 
 class Pipeline(object):
