@@ -53,5 +53,3 @@ end
 figure; pcshow(resulted_pc, 'MarkerSize', 20);
 title('Registered Point Cloud');
 
-
-

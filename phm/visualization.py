@@ -74,6 +74,17 @@ class Modalities(Enum):
             Modalities.Normals : 'Normals'
         }[self]
 
+def visualize_vtd(
+    data : O3DPointCloudWrapper,
+    pinhole,
+    win_name : str = 'VTD Visualization',
+    win_width : int = 200, 
+    win_height : int = 200
+):
+    gui.Application.instance.initialize()
+    VTD_Visualization(data, pinhole, win_name, win_width, win_height)
+    gui.Application.instance.run()
+
 class VTD_Visualization:
 
     MENU_SCREENSHOT_EXPORT = 11
