@@ -11,19 +11,26 @@ import open3d.visualization.rendering as rendering
 from dotmap import DotMap
 from enum import Enum, unique
 from phm.data import RGBDnT
+from phm.data.vtd import O3DPointCloudWrapper
+from phm.vtd import load_pinhole
 
-def pick_points(data : RGBDnT):
+def pick_points(
+    data : RGBDnT,
+    depth_params_file : str    
+):
     print("====================================================")
     print("Selecting Control Points in the given point cloud")
     print("Pick the corresponding points using [shift + left click] (at least three correspondences)")
     print("-- Press [shift + right click] to undo point picking")
     print("After picking points, press 'Q' to close the window")
-    vis = o3d.visualization.VisualizerWithEditing()
+    
+    vis = o3d.visualization.intrinsicizerWithEditing()
     vis.create_window()
-    vis.add_geometry(data.to_point_cloud_visible_o3d())
+    vis.add_geometry(data.to_point_cloud_visible_o3d(intrinsic=depth_params))
     vis.run()  # the window is executed to let user select the points
     vis.destroy_window()
     print("====================================================")
+    depth_params = load_pinhole(depth_params_file)
     points = vis.get_picked_points()
     print(f'Total Selected Points >> {len(points)}')
     return points
@@ -81,7 +88,7 @@ class VTD_Visualization:
     DEPTH = "depth"
 
     def __init__(self,
-        data : RGBDnT,
+        data : O3DPointCloudWrapper,
         pinhole,
         win_name : str = 'VTD Visualization',
         win_width : int = 200, 
@@ -316,27 +323,20 @@ class VTD_Visualization:
     def render(self):
         point_cloud = None
         if self.settings.modality == Modalities.Visible_Depth:
-            point_cloud = self.__data.to_point_cloud_visible_o3d(
-                self._pinhole, calc_normals=True)
+            point_cloud = self.__data.get_visible_point_cloud(
+                intrinsic=self._pinhole, calc_normals=True)
             self.settings.materials.default.shader = VTD_Visualization.UNLIT
         elif self.settings.modality == Modalities.Thermal_Depth:
-            point_cloud = self.__data.to_point_cloud_thermal_o3d(
-                self._pinhole, calc_normals=True, remove_invalids=True)
+            point_cloud = self.__data.get_thermal_point_cloud(
+                intrinsic=self._pinhole, calc_normals=True, remove_invalids=True)
             self.settings.materials.default.shader = VTD_Visualization.UNLIT
         elif self.settings.modality == Modalities.Normals:
-            point_cloud = self.__data.to_point_cloud_visible_o3d(self._pinhole, calc_normals=True)
+            point_cloud = self.__data.get_visible_point_cloud(
+                intrinsic=self._pinhole, calc_normals=True)
             self.settings.materials.default.shader = VTD_Visualization.NORMALS
         elif self.settings.modality == Modalities.Fusion:
-            pcv = self.__data.to_point_cloud_visible_o3d(self._pinhole, calc_normals=True)
-            pct = self.__data.to_point_cloud_thermal_o3d(self._pinhole, calc_normals=True)
-
-            temps = np.asarray(pct.colors)
-            colors = np.asarray(pcv.colors)
-            temps_v = np.mean(temps, axis=1)
-
-            colors[temps_v > 0, :] = temps[temps_v > 0, :]
-            pcv.colors = o3d.utility.Vector3dVector(colors)
-            point_cloud = pcv
+            point_cloud = self.__data.get_fused_point_cloud(
+                intrinsic=self._pinhole, calc_normals=True)
         else:
             raise NotImplemented('The modality is not implemented!')
 

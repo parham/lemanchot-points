@@ -31,6 +31,7 @@ class RGBDnTBatch:
     def __call__(self):
         return (load_RGBDnT(fx) for fx in self.files)
 
+
 class PipelineStep:
     def __init__(self, key_arg_map : Dict[str,str]):
         self.key_map = key_arg_map
@@ -90,7 +91,7 @@ class ConvertToPC_Step(PipelineStep):
     def __convert_pc(self, data : RGBDnT):
         return (
             data.to_point_cloud_visible_o3d(self.depth_params, False),
-            data.to_point_cloud_thermal_o3d(self.depth_params, False, True)
+            data.to_point_cloud_thermal_o3d(self.depth_params, False)
         )
 
 class Pipeline(object):

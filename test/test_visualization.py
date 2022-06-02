@@ -21,13 +21,6 @@ class Test_Visualization(unittest.TestCase):
             load_pinhole('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/depth/camera_info.json'), 
             'PHM Visualization Test', 1024, 768)
 
-        if len(sys.argv) > 1:
-            path = sys.argv[1]
-            if os.path.exists(path):
-                w.load(path)
-            else:
-                w.window.show_message_box("Error", "Could not open file '" + path + "'")
-
         # Run the event loop. This will not return until the last window is closed.
         gui.Application.instance.run()
 

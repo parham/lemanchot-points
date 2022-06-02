@@ -1,4 +1,5 @@
 
+import copy
 from multiprocessing.sharedctypes import Value
 import os
 import numpy as np
@@ -10,7 +11,7 @@ from dataclasses import dataclass
 
 __depth_scale__ = 1000
 
-class O3DPointCloudAdopter:
+class O3DPointCloudWrapper:
     def get_thermal_point_cloud(self, **kwargs):
         raise NotImplementedError('get_thermal_point_cloud is not implemented!')
     
@@ -21,19 +22,20 @@ class O3DPointCloudAdopter:
         pcv = self.get_visible_point_cloud(**kwargs)
         pct = self.get_thermal_point_cloud(**kwargs)
 
-        return self._fuse_point_cloud(pct, pcv)
+        return self._fuse_point_cloud(pcv, pct)
 
     def _fuse_point_cloud(self, pcv, pct):
+        pcv_copy = copy.deepcopy(pcv)
         temps = np.asarray(pct.colors)
-        colors = np.asarray(pcv.colors)
+        colors = np.asarray(pcv_copy.colors)
         temps_v = np.mean(temps, axis=1)
 
         colors[temps_v > 0, :] = temps[temps_v > 0, :]
-        pcv.colors = o3d.utility.Vector3dVector(colors)
-        return pcv
+        pcv_copy.colors = o3d.utility.Vector3dVector(colors)
+        return pcv_copy
 
 @dataclass
-class RGBDnT(O3DPointCloudAdopter):
+class RGBDnT(O3DPointCloudWrapper):
 
     data : np.ndarray # channels : X Y Z R G B & T
     fid : str = ''
@@ -200,13 +202,22 @@ class RGBDnT(O3DPointCloudAdopter):
         )
 
 @dataclass
-class DualPointCloudPack(O3DPointCloudAdopter):
+class DualPointCloudPack(O3DPointCloudWrapper):
 
     visible_pointcloud : o3d.geometry.PointCloud
     thermal_pointcloud : o3d.geometry.PointCloud
 
     def get_thermal_point_cloud(self, **kwargs):
-        return self.thermal_pointcloud 
+        pct = self.thermal_pointcloud 
+        if 'remove_invalids' in kwargs and kwargs['remove_invalids']:
+            points = np.asarray(pct.points) 
+            temps = np.asarray(pct.colors)
+            temps_v = np.mean(temps, axis=1)
+
+            pct.points = o3d.utility.Vector3dVector(points[temps_v > 0, :])
+            pct.colors = o3d.utility.Vector3dVector(temps[temps_v > 0, :])
+
+        return pct
     
     def get_visible_point_cloud(self, **kwargs):
         return self.visible_pointcloud
