@@ -50,5 +50,5 @@ for scale in range(3):
     current_transformation = result_icp.transformation
     print(result_icp)
 
-    draw_registration_result_original_color(source, target,
-                                        result_icp.transformation)
+draw_registration_result_original_color(source, target,
+                                    result_icp.transformation)

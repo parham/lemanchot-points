@@ -31,7 +31,6 @@ class RGBDnTBatch:
     def __call__(self):
         return (load_RGBDnT(fx) for fx in self.files)
 
-
 class PipelineStep:
     def __init__(self, key_arg_map : Dict[str,str]):
         self.key_map = key_arg_map

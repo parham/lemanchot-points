@@ -15,8 +15,8 @@ from phm.data.vtd import O3DPointCloudWrapper
 from phm.vtd import load_pinhole
 
 def pick_points(
-    data : RGBDnT,
-    depth_params_file : str    
+    data : O3DPointCloudWrapper,
+    depth_params    
 ):
     print("====================================================")
     print("Selecting Control Points in the given point cloud")
@@ -24,13 +24,12 @@ def pick_points(
     print("-- Press [shift + right click] to undo point picking")
     print("After picking points, press 'Q' to close the window")
     
-    vis = o3d.visualization.intrinsicizerWithEditing()
+    vis = o3d.visualization.VisualizerWithEditing()
     vis.create_window()
     vis.add_geometry(data.to_point_cloud_visible_o3d(intrinsic=depth_params))
     vis.run()  # the window is executed to let user select the points
     vis.destroy_window()
     print("====================================================")
-    depth_params = load_pinhole(depth_params_file)
     points = vis.get_picked_points()
     print(f'Total Selected Points >> {len(points)}')
     return points
