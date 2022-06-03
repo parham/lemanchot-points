@@ -10,3 +10,4 @@ imageio
 console-menu
 ansicolors
 progress
+probreg
