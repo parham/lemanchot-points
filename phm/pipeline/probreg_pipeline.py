@@ -5,6 +5,7 @@ import numpy as np
 
 from probreg import cpd
 from probreg import l2dist_regs
+from probreg import gmmtree
 
 from phm.data.vtd import DualPointCloudPack
 from phm.pipeline.core import AbstractRegistration_Step, PipelineStep
@@ -19,7 +20,8 @@ class AbstractProbregRegistration_Step(AbstractRegistration_Step):
         for index in range(1,len(batch)):
             source = batch[index][0]
             target = res_pc[0]
-            current_transformation = self._register(source, target)
+            res = self._register(source, target)
+            current_transformation = res.transformation
             # Transform Visible Pointcloud
             batch[index][0].points = current_transformation.transform(batch[index][0].points)
             # Transform Thermal Pointcloud
@@ -29,6 +31,37 @@ class AbstractProbregRegistration_Step(AbstractRegistration_Step):
             res_pc[1] += batch[index][1]
         
         return {'fused_pc' : DualPointCloudPack(res_pc[0], res_pc[1])}
+
+class GMMTreeRegistration_Step(AbstractProbregRegistration_Step):
+    def __init__(self, 
+        data_pcs_key : str,
+        voxel_size = 0.05,
+        maxiter: int = 1,
+        tol: float = 1.0e-3
+    ):
+        super().__init__(data_pcs_key = data_pcs_key)
+        self.voxel_size = voxel_size
+        self.maxiter = maxiter
+        self.threshold = tol
+
+    def _register(self, src, tgt):
+        source = src
+        target = tgt
+        
+        source.remove_non_finite_points()
+        target.remove_non_finite_points()
+
+        # transform target point cloud
+        source_d = source.voxel_down_sample(voxel_size=self.voxel_size)
+        target_d = target.voxel_down_sample(voxel_size=self.voxel_size)
+
+        # compute cpd registration
+        current_transformation = gmmtree.registration_gmmtree(source_d, target_d,
+            maxiter = self.maxiter,
+            tol = self.threshold
+        )
+
+        return current_transformation
 
 class SVRRegistration_Step(AbstractProbregRegistration_Step):
     def __init__(self, 

@@ -374,5 +374,3 @@ class VTD_Visualization:
             o3d.io.write_image(path, img, quality)
 
         self._scene.scene.scene.render_to_image(on_image)
- 
-
