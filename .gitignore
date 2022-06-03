@@ -7,3 +7,4 @@ system.log
 tmp/*
 results/fused.png
 phm/pipeline/__pycache__/*
+ap.py
