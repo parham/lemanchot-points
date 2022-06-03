@@ -6,11 +6,10 @@ from progress.bar import Bar
 
 from phm.data import RGBDnT
 from phm.io import load_RGBDnT
-from phm.data.vtd import __depth_scale__
+from phm.data.vtd import DualPointCloudPack, __depth_scale__
 from phm.vtd import load_pinhole
 
 class RGBDnTBatch:
-
     def __init__(self, root_dir : str, filenames : List[str]):
         super().__init__()
         # Check file availability
@@ -48,6 +47,29 @@ class PipelineStep:
 
     def __call__(self, **kwargs):
         return self._impl_func(**self._generate_args(**kwargs))
+
+class AbstractRegistration_Step(PipelineStep):
+    def __init__(self, data_pcs_key : str):
+        super().__init__({'pcs' : data_pcs_key})
+    
+    def _impl_func(self, **kwargs):
+        batch = kwargs['pcs']
+        res_pc = list(batch[0])
+        for index in range(1,len(batch)):
+            source = batch[index][0]
+            target = res_pc[0]
+            current_transformation = self._register(source, target)
+            # Transform Visible Pointcloud
+            batch[index][0].transform(current_transformation)
+            # Transform Thermal Pointcloud
+            batch[index][1].transform(current_transformation)
+            res_pc[0] += batch[index][0]
+            res_pc[1] += batch[index][1]
+        
+        return {'fused_pc' : DualPointCloudPack(res_pc[0], res_pc[1])}
+    
+    def _register(self, src, tgt):
+        pass
 
 class FilterDepthRange_Step(PipelineStep):
     def __init__(self, depth_range = [1, 2.5], data_batch_key : str = 'batch'):
