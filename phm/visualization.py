@@ -18,6 +18,9 @@ def pick_points(
     data : O3DPointCloudWrapper,
     depth_params    
 ):
+    return pick_points_point_cloud(data.to_point_cloud_visible_o3d(intrinsic=depth_params))
+
+def pick_points_point_cloud(data):
     print("====================================================")
     print("Selecting Control Points in the given point cloud")
     print("Pick the corresponding points using [shift + left click] (at least three correspondences)")
@@ -26,7 +29,7 @@ def pick_points(
     
     vis = o3d.visualization.VisualizerWithEditing()
     vis.create_window()
-    vis.add_geometry(data.to_point_cloud_visible_o3d(intrinsic=depth_params))
+    vis.add_geometry(data)
     vis.run()  # the window is executed to let user select the points
     vis.destroy_window()
     print("====================================================")

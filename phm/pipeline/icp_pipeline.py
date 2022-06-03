@@ -20,11 +20,11 @@ class ColoredICPRegistar_Step(PipelineStep):
         self.voxel_radius = voxel_radius
         self.max_iter = max_iter
         self.voxel_size = voxel_size
-    
+     
     def _impl_func(self, **kwargs):
         batch = kwargs['pcs']
         res_pc = list(batch[0])
-        for index in range(len(batch)):
+        for index in range(1,len(batch)):
             source = batch[index][0]
             target = res_pc[0]
             current_transformation = self._register(source, target)
