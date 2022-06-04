@@ -1,8 +1,9 @@
 
 import os
 
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Tuple
 from progress.bar import Bar
+from phm import data
 
 from phm.data import RGBDnT
 from phm.io import load_RGBDnT
@@ -51,23 +52,33 @@ class PipelineStep:
 class AbstractRegistration_Step(PipelineStep):
     def __init__(self, data_pcs_key : str):
         super().__init__({'pcs' : data_pcs_key})
+        self.pcs_key = data_pcs_key
     
     def _impl_func(self, **kwargs):
         batch = kwargs['pcs']
+
         res_pc = list(batch[0])
         for index in range(1,len(batch)):
             source = batch[index][0]
             target = res_pc[0]
             current_transformation = self._register(source, target)
-            # Transform Visible Pointcloud
-            batch[index][0].transform(current_transformation)
-            # Transform Thermal Pointcloud
-            batch[index][1].transform(current_transformation)
+            batch[index] = self._transform_point_cloud(batch[index], current_transformation)
+
             res_pc[0] += batch[index][0]
             res_pc[1] += batch[index][1]
-        
-        return {'fused_pc' : DualPointCloudPack(res_pc[0], res_pc[1])}
+
+        return {
+            f'{self.pcs_key}' : batch,
+            'fused_pc' : DualPointCloudPack(res_pc[0], res_pc[1])
+        }
     
+    def _transform_point_cloud(self, data : Tuple, transformation):
+        # Transform Visible Pointcloud
+        data[0].transform(transformation)
+        # Transform Thermal Pointcloud
+        data[1].transform(transformation)
+        return data
+
     def _register(self, src, tgt):
         pass
 

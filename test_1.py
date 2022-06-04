@@ -10,6 +10,7 @@ source = o3.io.read_point_cloud('/home/phm/GoogleDrive/Personal/Datasets/my-data
 source.remove_non_finite_points()
 target = o3.io.read_point_cloud('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/pc/pcs_1626967976820.ply')
 target.remove_non_finite_points()
+
 # transform target point cloud
 th = np.deg2rad(30.0)
 source_d = source.voxel_down_sample(voxel_size=0.05)

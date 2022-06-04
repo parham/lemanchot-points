@@ -1,6 +1,7 @@
 
 
 import copy
+from typing import Tuple
 import numpy as np
 
 from probreg import cpd
@@ -9,29 +10,20 @@ from probreg import gmmtree
 from probreg import filterreg
 
 from phm.data.vtd import DualPointCloudPack
-from phm.pipeline.core import AbstractRegistration_Step, PipelineStep
+from phm.pipeline.core import AbstractRegistration_Step
+
 
 class AbstractProbregRegistration_Step(AbstractRegistration_Step):
     def __init__(self, data_pcs_key: str):
         super().__init__(data_pcs_key)
     
-    def _impl_func(self, **kwargs):
-        batch = kwargs['pcs']
-        res_pc = list(batch[0])
-        for index in range(1,len(batch)):
-            source = batch[index][0]
-            target = res_pc[0]
-            res = self._register(source, target)
-            current_transformation = res.transformation
-            # Transform Visible Pointcloud
-            batch[index][0].points = current_transformation.transform(batch[index][0].points)
-            # Transform Thermal Pointcloud
-            batch[index][1].points = current_transformation.transform(batch[index][1].points)
-
-            res_pc[0] += batch[index][0]
-            res_pc[1] += batch[index][1]
-        
-        return {'fused_pc' : DualPointCloudPack(res_pc[0], res_pc[1])}
+    def _transform_point_cloud(self, data : Tuple, trans):
+        transformation = trans.transformation
+        # Transform Visible Pointcloud
+        data[0].points = transformation.transform(data[0].points)
+        # Transform Thermal Pointcloud
+        data[1].points = transformation.transform(data[1].points)
+        return data
 
 class FilterregRegistration_Step(AbstractProbregRegistration_Step):
     def __init__(self, 
@@ -131,23 +123,12 @@ class SVRRegistration_Step(AbstractProbregRegistration_Step):
 
         return current_transformation
 
-    def _impl_func(self, **kwargs):
-        batch = kwargs['pcs']
-        res_pc = list(batch[0])
-        for index in range(1,len(batch)):
-            source = batch[index][0]
-            target = res_pc[0]
-            current_transformation = self._register(source, target)
-            # Transform Visible Pointcloud
-            batch[index][0].points = current_transformation.transform(batch[index][0].points)
-            # Transform Thermal Pointcloud
-            batch[index][1].points = current_transformation.transform(batch[index][1].points)
-
-            res_pc[0] += batch[index][0]
-            res_pc[1] += batch[index][1]
-        
-        return {'fused_pc' : DualPointCloudPack(res_pc[0], res_pc[1])}
-
+    def _transform_point_cloud(self, data : Tuple, trans):
+        # Transform Visible Pointcloud
+        data[0].points = trans.transform(data[0].points)
+        # Transform Thermal Pointcloud
+        data[1].points = trans.transform(data[1].points)
+        return data
 
 class CPDRegistration_Step(AbstractProbregRegistration_Step):
     def __init__(self, 
