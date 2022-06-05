@@ -36,6 +36,11 @@ The presented system provides different tools for working with multi-modal data 
 - [ ] Implement the multi-point cloud registration method using maybe ICP or similar methods!
 - [X] Implement the system visualization.
 
+#### Experiments
+- [ ] A Table showing the metrics of selected techniques for visible and thermal point clouds.
+- [ ] Figure: x-axis iterations, y-axis metrics (for each metric, one figure)
+- [ ] Figure: running time for each technique to reach the minimum acceptable metric.
+
 ## Contributors
 **Parham Nooralishahi** - parham.nooralishahi@gmail.com | [@phm](https://www.linkedin.com/in/parham-nooralishahi/) <br/>
 **Sandra Pozzer** - sandra.pozzer.1@ulaval.ca | [@sandra](https://www.linkedin.com/in/sandra-pozzer/) <br/>
