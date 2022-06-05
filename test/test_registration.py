@@ -92,6 +92,7 @@ class Test_Registration(unittest.TestCase):
             SVRRegistration_Step(
                 voxel_size = 0.05,
                 data_pcs_key='pcs', maxiter=40),
+            ColoredICPRegistar_Step(data_pcs_key='pcs'),
         ])
 
         res = pipobj(batch)
