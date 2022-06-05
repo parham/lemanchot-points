@@ -33,8 +33,9 @@ The presented system provides different tools for working with multi-modal data 
       - [ ] Using board
 - [X] Implement the method for converting RGBD&T to multi-channel point cloud
 - [X] Implement the visualization method for the point cloud.
-- [ ] Implement the multi-point cloud registration method using maybe ICP or similar methods!
+- [X] Implement the multi-point cloud registration method using maybe ICP or similar methods!
 - [X] Implement the system visualization.
+- [ ] Implement metrics for evaluating the techniques.
 
 #### Experiments
 - [ ] A Table showing the metrics of selected techniques for visible and thermal point clouds.
