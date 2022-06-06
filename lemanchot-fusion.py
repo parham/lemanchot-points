@@ -232,7 +232,6 @@ Repository: https://github.com/parham/lemanchot-fusion
         else:
             raise NotImplementedError(f'{method_name} is not supported!')
     
-
     def on_process_filterreg(self, method_name):
         # method_name = 'filterreg'
         root_dir = self.settings.root_dir
@@ -323,6 +322,21 @@ Repository: https://github.com/parham/lemanchot-fusion
 
         menu_process_filterreg = FunctionItem("Multi-modal Registration using FilterReg", lambda: self.on_process_filterreg('filterreg'))
         submenu_process.append_item(menu_process_filterreg)
+
+        menu_process_gmtree = FunctionItem("Multi-modal Registration using GMMTree", lambda: self.on_process_filterreg('gmmtree'))
+        submenu_process.append_item(menu_process_gmtree)
+
+        menu_process_svr = FunctionItem("Multi-modal Registration using SVR", lambda: self.on_process_filterreg('svr'))
+        submenu_process.append_item(menu_process_svr)
+
+        menu_process_cpd = FunctionItem("Multi-modal Registration using CPD", lambda: self.on_process_filterreg('cpd'))
+        submenu_process.append_item(menu_process_cpd)
+
+        menu_process_manual = FunctionItem("Multi-modal Registration Manually", lambda: self.on_process_filterreg('manual'))
+        submenu_process.append_item(menu_process_manual)
+
+        menu_process_colored_icp = FunctionItem("Multi-modal Registration using Colored ICP", lambda: self.on_process_filterreg('colored_icp'))
+        submenu_process.append_item(menu_process_colored_icp)
 
         submenu_process_item = SubmenuItem('Register Multi-modal Point Cloud', submenu=submenu_process)
         submenu_process_item.set_menu(menu)
