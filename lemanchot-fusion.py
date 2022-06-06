@@ -1,10 +1,11 @@
 
 
-import argparse
 import os
 import glob
 import logging
 import sys
+import csv
+
 import open3d as o3d
 import open3d.visualization.gui as gui
 
@@ -154,14 +155,11 @@ Repository: https://github.com/parham/lemanchot-fusion
 
     def _get_pipeline(self, 
         method_name : str,
-        root_dir : str,
+        final_result_dir : str,
+        aligned_result_dir : str,
         depth_param_file : str,
         depth_param
-    ):
-        root_dir = self.settings.root_dir
-        final_result_dir = os.path.join(root_dir, 'results', 'final_pcs')
-        aligned_result_dir = os.path.join(root_dir, 'results', 'aligned_pcs', method_name)
-        
+    ):        
         filter_depth = FilterDepthRange_Step()
         convert2pc = ConvertToPC_Step(
             depth_params_file = depth_param_file,
@@ -236,6 +234,8 @@ Repository: https://github.com/parham/lemanchot-fusion
     def on_process_registration(self, method_name):
         # method_name = 'filterreg'
         root_dir = self.settings.root_dir
+        final_result_dir = os.path.join(root_dir, 'results', 'final_pcs')
+        aligned_result_dir = os.path.join(root_dir, 'results', 'aligned_pcs', method_name)
         vtd_dir = os.path.join(root_dir, 'vtd')
         depth_param_file = os.path.join(root_dir, 'depth/camera_info.json')
         depth_param = load_pinhole(depth_param_file)
@@ -257,14 +257,33 @@ Repository: https://github.com/parham/lemanchot-fusion
 
         # Create the processing pipeline
         pipobj = self._get_pipeline(method_name,
-            root_dir, depth_param_file, depth_param)
+            final_result_dir, aligned_result_dir,
+            depth_param_file, depth_param)
         # Apply the pipeline on loaded data
         res = pipobj(batch)
         res_pc = res['fused_pc']
+        metrics = res['metrics']
 
+        self.__save_metrics(final_result_dir, method_name, metrics)
         visualize_vtd(
             res_pc, depth_param,
             f'Result of {method_name} technique', 1024, 768)
+
+    def __save_metrics(self, result_dir, method_name, metrics):
+        with open(os.path.join(result_dir, f'{method_name}_metrics.csv'), 'w', newline='') as csvfile:
+            keys = tuple(metrics.keys())
+
+            records = []
+            for index in range(len(metrics[keys[0]])):
+                tmp = {}
+                for k in keys:
+                    tmp[k] = metrics[k][index]
+                records.append(tmp)
+
+            writer = csv.DictWriter(csvfile, fieldnames=keys)
+            writer.writeheader()
+            writer.writerows(records)
+
 
     def __load_init_settings(self, fs):
         config = ConfigParser()

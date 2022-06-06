@@ -85,7 +85,6 @@ class PointCloudSaver_Step(PipelineStep):
                 write_ascii = True, print_progress = True)
             index += 1
 
-
 class AbstractRegistration_Step(PipelineStep):
     def __init__(self, data_pcs_key : str):
         super().__init__({'pcs' : data_pcs_key})
@@ -94,7 +93,7 @@ class AbstractRegistration_Step(PipelineStep):
     def _impl_func(self, **kwargs):
         batch = kwargs['pcs']
 
-        pcs = list()
+        pcs = list([DualPointCloudPack(batch[0][0], batch[0][1])])
         res_pc = list(batch[0])
         for index in range(1,len(batch)):
             source = batch[index][0]
