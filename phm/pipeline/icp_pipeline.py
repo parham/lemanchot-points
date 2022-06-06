@@ -10,12 +10,14 @@ class ColoredICPRegistar_Step(AbstractRegistration_Step):
         voxel_radius = [0.04, 0.02, 0.01],
         max_iter = [50, 30, 16],
         voxel_size = 0.05,
-        data_pcs_key : str = 'pcs'
+        data_pcs_key : str = 'pcs',
+        initial_transformation = None
     ):
         super().__init__(data_pcs_key = data_pcs_key)
         self.voxel_radius = voxel_radius
         self.max_iter = max_iter
         self.voxel_size = voxel_size
+        self.initial_transformation = initial_transformation
 
     def _register(self, src, tgt):
         source = src
@@ -24,7 +26,7 @@ class ColoredICPRegistar_Step(AbstractRegistration_Step):
         voxel_radius = [0.06, 0.04, 0.04]
         max_iter = [50, 30, 14]
 
-        current_transformation = np.identity(4)
+        current_transformation = self.initial_transformation if self.initial_transformation is not None else np.identity(4)
         print("Colored point cloud registration")
         for scale in range(3):
             iter = max_iter[scale]

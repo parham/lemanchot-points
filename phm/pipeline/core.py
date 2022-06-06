@@ -1,9 +1,12 @@
 
 import os
+from sys import prefix
 
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Dict, List, Tuple
 from progress.bar import Bar
-from phm import data
+from pathlib import Path
+
+import open3d as o3d
 
 from phm.data import RGBDnT
 from phm.io import load_RGBDnT
@@ -49,6 +52,40 @@ class PipelineStep:
     def __call__(self, **kwargs):
         return self._impl_func(**self._generate_args(**kwargs))
 
+class PointCloudSaver_Step(PipelineStep):
+    def __init__(self, 
+        data_pcs_key : str,
+        result_dir : str,
+        depth_param,
+        method_name : str = 'pc'):
+        super().__init__({'pcs' : data_pcs_key})
+        self.result_dir = result_dir
+        self.method_name = method_name
+        self.depth_param = depth_param
+        # Make the directory if not exist!
+        Path(result_dir).mkdir(parents=True, exist_ok=True)
+
+    def _impl_func(self, **kwargs):
+        batch = kwargs['pcs']
+        pcs = batch if isinstance(batch, list) else [batch]
+        index = 1
+        print(f'\nTotal Number of Point Clouds : {len(pcs)}')
+        for pc in pcs:
+            fname_viz = f'{self.method_name}_visible_{index}.ply'
+            file_viz = os.path.join(self.result_dir, fname_viz)
+            fname_th = f'{self.method_name}_thermal_{index}.ply'
+            file_th = os.path.join(self.result_dir, fname_th)
+            print(f'Saving {fname_viz} (Visible) ...')
+            o3d.io.write_point_cloud(file_viz, 
+                pc.get_visible_point_cloud(intrinsic=self.depth_param), 
+                write_ascii = True, print_progress = True)
+            print(f'Saving {fname_th} (Thermal) ...')
+            o3d.io.write_point_cloud(file_th, 
+                pc.get_thermal_point_cloud(intrinsic=self.depth_param), 
+                write_ascii = True, print_progress = True)
+            index += 1
+
+
 class AbstractRegistration_Step(PipelineStep):
     def __init__(self, data_pcs_key : str):
         super().__init__({'pcs' : data_pcs_key})
@@ -57,6 +94,7 @@ class AbstractRegistration_Step(PipelineStep):
     def _impl_func(self, **kwargs):
         batch = kwargs['pcs']
 
+        pcs = list()
         res_pc = list(batch[0])
         for index in range(1,len(batch)):
             source = batch[index][0]
@@ -66,8 +104,10 @@ class AbstractRegistration_Step(PipelineStep):
 
             res_pc[0] += batch[index][0]
             res_pc[1] += batch[index][1]
+            pcs.append(DualPointCloudPack(batch[index][0], batch[index][1]))
 
         return {
+            'aligned_pcs' : pcs,
             f'{self.pcs_key}' : batch,
             'fused_pc' : DualPointCloudPack(res_pc[0], res_pc[1])
         }
@@ -150,7 +190,9 @@ class Pipeline(object):
         res = {'batch' : batch}
         with Bar('Processing using pipeline steps', max=self.steps_count) as bar:
             for step in self.steps:
-                res = {**res, **step(**res)}
+                d_res = step(**res)
+                if d_res is not None:
+                    res = {**res, **d_res}
                 bar.next()
         
         return res
