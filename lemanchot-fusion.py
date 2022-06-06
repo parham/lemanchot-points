@@ -19,7 +19,7 @@ from configparser import ConfigParser
 from phm.dataset import VTD_Dataset, create_dual_point_cloud_dataset, create_mme_dataset, create_point_cloud_dataset, create_vtd_dataset
 from phm.io.vtd import load_RGBDnT
 from phm.pipeline.core import ConvertToPC_Step, FilterDepthRange_Step, Pipeline, PointCloudSaver_Step, RGBDnTBatch
-from phm.pipeline.icp_pipeline import ColoredICPRegistar_Step
+from phm.pipeline.o3d_pipeline import ColoredICPRegistar_Step, O3DRegistrationMetrics_Step
 from phm.pipeline.manual_pipeline import ManualRegistration_Step
 from phm.pipeline.probreg_pipeline import CPDRegistration_Step, FilterregRegistration_Step, GMMTreeRegistration_Step, SVRRegistration_Step
 from phm.visualization import VTD_Visualization, visualize_vtd
@@ -178,6 +178,7 @@ Repository: https://github.com/parham/lemanchot-fusion
             result_dir=final_result_dir,
             method_name=method_name
         )
+        metrics_step = O3DRegistrationMetrics_Step(data_pcs_key='pcs')
         if method_name == 'filterreg':
             return Pipeline([
                 filter_depth, convert2pc,
@@ -185,7 +186,7 @@ Repository: https://github.com/parham/lemanchot-fusion
                     voxel_size = 0.05,
                     data_pcs_key='pcs', maxiter=40),
                 # ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
-                aligned_pc_saver, fused_pc_saver
+                aligned_pc_saver, fused_pc_saver, metrics_step
             ])
         elif method_name == 'gmmtree':
             return Pipeline([
@@ -194,7 +195,7 @@ Repository: https://github.com/parham/lemanchot-fusion
                     voxel_size = 0.05,
                     data_pcs_key='pcs', maxiter=40),
                 ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
-                aligned_pc_saver, fused_pc_saver
+                aligned_pc_saver, fused_pc_saver, metrics_step
             ])
         elif method_name == 'svr':
             return Pipeline([
@@ -203,7 +204,7 @@ Repository: https://github.com/parham/lemanchot-fusion
                     voxel_size = 0.05,
                     data_pcs_key='pcs', maxiter=40),
                 ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
-                aligned_pc_saver, fused_pc_saver
+                aligned_pc_saver, fused_pc_saver, metrics_step
             ])
         elif method_name == 'cpd':
             return Pipeline([
@@ -212,7 +213,7 @@ Repository: https://github.com/parham/lemanchot-fusion
                     voxel_size = 0.05,
                     data_pcs_key='pcs'),
                 ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
-                aligned_pc_saver, fused_pc_saver
+                aligned_pc_saver, fused_pc_saver, metrics_step
             ])
         elif method_name == 'manual':
             return Pipeline([
@@ -221,18 +222,18 @@ Repository: https://github.com/parham/lemanchot-fusion
                     depth_params=depth_param,
                     data_pcs_key='pcs'),
                 ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
-                aligned_pc_saver, fused_pc_saver
+                aligned_pc_saver, fused_pc_saver, metrics_step
             ])
         elif method_name == 'colored_icp':
             return Pipeline([
                 filter_depth, convert2pc,
                 ColoredICPRegistar_Step(data_pcs_key='pcs'),
-                aligned_pc_saver, fused_pc_saver
+                aligned_pc_saver, fused_pc_saver, metrics_step
             ])
         else:
             raise NotImplementedError(f'{method_name} is not supported!')
     
-    def on_process_filterreg(self, method_name):
+    def on_process_registration(self, method_name):
         # method_name = 'filterreg'
         root_dir = self.settings.root_dir
         vtd_dir = os.path.join(root_dir, 'vtd')
@@ -320,22 +321,22 @@ Repository: https://github.com/parham/lemanchot-fusion
         # Create "Process Multi-modal Data" submenu
         submenu_process = ConsoleMenu(title='Register Multi-modal Point Cloud', exit_option_text='Back to main menu')
 
-        menu_process_filterreg = FunctionItem("Multi-modal Registration using FilterReg", lambda: self.on_process_filterreg('filterreg'))
+        menu_process_filterreg = FunctionItem("Multi-modal Registration using FilterReg", lambda: self.on_process_registration('filterreg'))
         submenu_process.append_item(menu_process_filterreg)
 
-        menu_process_gmtree = FunctionItem("Multi-modal Registration using GMMTree", lambda: self.on_process_filterreg('gmmtree'))
+        menu_process_gmtree = FunctionItem("Multi-modal Registration using GMMTree", lambda: self.on_process_registration('gmmtree'))
         submenu_process.append_item(menu_process_gmtree)
 
-        menu_process_svr = FunctionItem("Multi-modal Registration using SVR", lambda: self.on_process_filterreg('svr'))
+        menu_process_svr = FunctionItem("Multi-modal Registration using SVR", lambda: self.on_process_registration('svr'))
         submenu_process.append_item(menu_process_svr)
 
-        menu_process_cpd = FunctionItem("Multi-modal Registration using CPD", lambda: self.on_process_filterreg('cpd'))
+        menu_process_cpd = FunctionItem("Multi-modal Registration using CPD", lambda: self.on_process_registration('cpd'))
         submenu_process.append_item(menu_process_cpd)
 
-        menu_process_manual = FunctionItem("Multi-modal Registration Manually", lambda: self.on_process_filterreg('manual'))
+        menu_process_manual = FunctionItem("Multi-modal Registration Manually", lambda: self.on_process_registration('manual'))
         submenu_process.append_item(menu_process_manual)
 
-        menu_process_colored_icp = FunctionItem("Multi-modal Registration using Colored ICP", lambda: self.on_process_filterreg('colored_icp'))
+        menu_process_colored_icp = FunctionItem("Multi-modal Registration using Colored ICP", lambda: self.on_process_registration('colored_icp'))
         submenu_process.append_item(menu_process_colored_icp)
 
         submenu_process_item = SubmenuItem('Register Multi-modal Point Cloud', submenu=submenu_process)

@@ -122,13 +122,6 @@ class AbstractRegistration_Step(PipelineStep):
     def _register(self, src, tgt):
         pass
 
-class CalculateMetrics_Step(PipelineStep):
-    def __init__(self, data_pcs_key : str,
-        metrics = []
-    ):
-        super().__init__({'pcs' : data_pcs_key})
-        self.metrics = metrics
-
 class FilterDepthRange_Step(PipelineStep):
     def __init__(self, depth_range = [1, 2.5], data_batch_key : str = 'batch'):
         super().__init__({
