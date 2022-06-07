@@ -1,4 +1,5 @@
 
+import copy
 import os
 from sys import prefix
 
@@ -94,7 +95,7 @@ class AbstractRegistration_Step(PipelineStep):
         batch = kwargs['pcs']
 
         pcs = list([DualPointCloudPack(batch[0][0], batch[0][1])])
-        res_pc = list(batch[0])
+        res_pc = list(copy.deepcopy(batch[0]))
         for index in range(1,len(batch)):
             source = batch[index][0]
             target = res_pc[0]
