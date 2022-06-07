@@ -42,8 +42,9 @@ end
 resulted_pc = pcs{1};
 for index = 2:d_count
     moving = pcs{index};
-    tform = pcregistericp(moving, resulted_pc, 'Metric','pointToPoint','Extrapolate', true, 'InlierRatio', 1, 'MaxIterations', 40);
-    moving_tf = pctransform(moving, tform);
+    [tform, movingReg, rmse] = pcregistericp(moving, resulted_pc, 'Metric','pointToPoint','Extrapolate', true, 'InlierRatio', 1, 'MaxIterations', 40);
+    disp(rmse)
+    moving_tf = pctransform(movingReg, tform);
     resulted_pc = pcmerge(resulted_pc, moving_tf, mergeSize);
 %     figure; pcshow(moving); title('Original');
 %     figure; pcshow(moving_tf); title('Transformed');
