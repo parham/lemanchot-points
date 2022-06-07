@@ -284,7 +284,6 @@ Repository: https://github.com/parham/lemanchot-fusion
             writer.writeheader()
             writer.writerows(records)
 
-
     def __load_init_settings(self, fs):
         config = ConfigParser()
         config.read(fs)

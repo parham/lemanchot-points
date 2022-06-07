@@ -1,0 +1,35 @@
+
+clear;
+clc;
+
+%% Settings
+dataDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/results/aligned_pcs/colored_icp';
+metricsDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/results/final_pcs';
+methodNames = {
+    'colored_icp', 'cpd', 'filterreg', ...
+    'gmmtree', 'svr', 'ndt'
+};
+
+fprintf('Root Dir >> %s', dataDir);
+
+metrics = struct();
+for mindx = 1:length(methodNames)
+    mname = methodNames{mindx};
+    fprintf('Analyzing metrics for %s\n', mname);
+    mfile = fullfile(metricsDir,sprintf('%s_metrics.csv',mname));
+    if ~isfile(mfile)
+        continue
+    end
+    %% Loading metrics (from Python)
+    m = readmatrix(mfile);
+    metrics.(mname).('rmse') = m(:,1)';
+    metrics.(mname).('fitness') = m(:,2)';
+    %% Calculating metrics
+    thermalFiles = dir(fullfile(dataDir, '*_thermal_*.ply'));
+    visibleFiles = dir(fullfile(dataDir, '*_visible_*.ply'));
+    for index = 1:length()
+
+end
+
+
+
