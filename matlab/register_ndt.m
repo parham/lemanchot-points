@@ -43,8 +43,9 @@ resulted_pc = pcs{1};
 accumTform = 0;
 for index = 2:d_count
     moving = pcs{index};
-    tform = pcregisterndt(moving, resulted_pc, 0.5);
-    moving_tf = pctransform(moving, tform);
+    [tform, movingReg,rmse] = pcregisterndt(moving, resulted_pc, 0.1);
+    disp(rmse)
+    moving_tf = pctransform(movingReg, tform);
     resulted_pc = pcmerge(resulted_pc, moving_tf, mergeSize);
 end
 
