@@ -3,15 +3,16 @@ clear;
 clc;
 
 %% Settings
-dataDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/results/aligned_pcs/colored_icp';
+dataset_name = 'pipe_heating';
+dataDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/results/aligned_pcs/';
 metricsDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/results/final_pcs';
 methodNames = {
     'colored_icp', 'cpd', 'filterreg', ...
     'gmmtree', 'svr', 'ndt'
 };
 
-fprintf('Root Dir >> %s', dataDir);
-
+fprintf('%s is processing to provide metrics ...\n', dataset_name);
+fprintf('Root Dir >> %s\n', dataDir);
 metrics = struct();
 for mindx = 1:length(methodNames)
     mname = methodNames{mindx};
@@ -25,8 +26,8 @@ for mindx = 1:length(methodNames)
     metrics.(mname).('rmse') = m(:,1)';
     metrics.(mname).('fitness') = m(:,2)';
     %% Calculating metrics
-    visibleFiles = dir(fullfile(dataDir, '*_visible_*.ply'));
-    thermalFiles = dir(fullfile(dataDir, '*_thermal_*.ply'));
+    visibleFiles = dir(fullfile(dataDir, mname, '*_visible_*.ply'));
+    thermalFiles = dir(fullfile(dataDir, mname, '*_thermal_*.ply'));
     pcs_viz = cell(length(visibleFiles),1);
     pcs_th = cell(length(thermalFiles),1);
     for index = 1:length(visibleFiles)
@@ -52,6 +53,8 @@ for mindx = 1:length(methodNames)
     metrics.(mname).('angular_sim_BA') = [];
     metrics.(mname).('angular_sim_AB') = [];
     metrics.(mname).('angular_sim_sym') = [];
+    
+    resRowCount = 0;
     for index = 1:length(visibleFiles)-1
         % Angular Similarity metrics
         [asimBA, asimAB, asimSym] = pc_asim(pcs_viz{index}, pcs_viz{index+1}, 'Mean');
@@ -64,12 +67,41 @@ for mindx = 1:length(methodNames)
         pcA.norm = pcs_viz{index}.Color;
         pcB.geom = pcs_viz{index+1}.Location;
         pcB.color = pcs_viz{index+1}.Color;
-
+        pcB.norm = pcs_viz{index+1}.Color;
         % Compute structural similarity values based on selected PARAMS
         [pointssim] = pc_ssim(pcA, pcB, PARAMS);
-        print('Point-SSIM')
+        ks = fieldnames(pointssim);
+        for k=1:numel(ks)
+            kmetrics = sprintf('pointssim_%s', ks{k});
+            if ~isfield(metrics.(mname), kmetrics)
+                metrics.(mname).(kmetrics) = [];
+            end
+            metrics.(mname).(kmetrics)(end+1) = pointssim.(ks{k});
+        end
     end
 end
+
+%% Save the results
+fprintf('Saving the metrics ...\n');
+for mindx = 1:length(methodNames)
+    mname = methodNames{mindx};
+    resFile = fullfile(dataDir, sprintf('metrics_%s.csv', mname));
+    fprintf('Saving %s metrics in %s \n', mname, resFile);
+    res = [];
+    if ~isfield(metrics,mname)
+        continue;
+    end
+    mres = metrics.(mname);
+    metricsNames = fieldnames(mres);
+    colNum = numel(metricsNames);
+    tbl = [];
+    for k=1:colNum
+        m = mres.(metricsNames{k});
+        tbl = [tbl, m'];
+    end
+    csvwrite_with_headers(resFile,tbl,metricsNames)
+end
+
 
 
 
