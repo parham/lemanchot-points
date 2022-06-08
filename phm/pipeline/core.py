@@ -11,7 +11,7 @@ import open3d as o3d
 
 from phm.data import RGBDnT
 from phm.io import load_RGBDnT
-from phm.data.vtd import DualPointCloudPack, __depth_scale__
+from phm.data.vtd import DualPointCloudPack, __depth_scale__, filter_out_zero_thermal
 from phm.vtd import load_pinhole
 
 class RGBDnTBatch:
@@ -165,6 +165,25 @@ class ConvertToPC_Step(PipelineStep):
             data.to_point_cloud_visible_o3d(self.depth_params, False),
             data.to_point_cloud_thermal_o3d(self.depth_params, False)
         )
+
+class Preprocessing_Step(PipelineStep):
+    def __init__(self, data_pcs_key : str):
+        super().__init__({'pcs' : data_pcs_key})
+
+    def _impl_func(self, **kwargs):
+        batch = kwargs['pcs']
+        pcs = []
+        for index in range(len(batch)):
+            visible_pc = batch[index][0]
+            thermal_pc = batch[index][1]
+
+            visible_pc,_ = visible_pc.remove_statistical_outlier(nb_neighbors=8, std_ratio=0.005, print_progress=True)
+            thermal_pc,_ = thermal_pc.remove_statistical_outlier(nb_neighbors=8, std_ratio=0.005, print_progress=True)
+            thermal_pc = filter_out_zero_thermal(thermal_pc)
+            pcs.append(DualPointCloudPack(visible_pc, thermal_pc))
+
+        return {'prp_pcs' : pcs}
+
 
 class Pipeline(object):
 

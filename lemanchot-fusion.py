@@ -19,7 +19,7 @@ from configparser import ConfigParser
 
 from phm.dataset import VTD_Dataset, create_dual_point_cloud_dataset, create_mme_dataset, create_point_cloud_dataset, create_vtd_dataset
 from phm.io.vtd import load_RGBDnT
-from phm.pipeline.core import ConvertToPC_Step, FilterDepthRange_Step, Pipeline, PointCloudSaver_Step, RGBDnTBatch
+from phm.pipeline.core import ConvertToPC_Step, FilterDepthRange_Step, Pipeline, PointCloudSaver_Step, Preprocessing_Step, RGBDnTBatch
 from phm.pipeline.o3d_pipeline import ColoredICPRegistar_Step, O3DRegistrationMetrics_Step
 from phm.pipeline.manual_pipeline import ManualRegistration_Step
 from phm.pipeline.probreg_pipeline import CPDRegistration_Step, FilterregRegistration_Step, GMMTreeRegistration_Step, SVRRegistration_Step
@@ -152,6 +152,38 @@ Repository: https://github.com/parham/lemanchot-fusion
             pinhole, 'PHM RGBD&T Visualization', 1024, 768)
         gui.Application.instance.run()
         print('VTD visualization is finished!')
+
+    def on_process_preprocessing(self):
+
+        root_dir = self.settings.root_dir
+        vtd_dir = os.path.join(root_dir, 'vtd')
+        preprocessing_dir = os.path.join(root_dir, 'preprocessing')
+        depth_param_file = os.path.join(root_dir, 'depth/camera_info.json')
+        depth_param = load_pinhole(depth_param_file)
+        # Input filenames
+        vtd_files = glob.glob(os.path.join(vtd_dir,'*_*.mat'))
+        vtd_files = [os.path.basename(f) for f in vtd_files]
+        # Loading Dataset
+        batch = RGBDnTBatch(
+            root_dir = vtd_dir,
+            filenames = vtd_files
+        )
+
+        pipeline = Pipeline([
+            FilterDepthRange_Step(),
+            ConvertToPC_Step(
+                depth_params_file = depth_param_file,
+                data_batch_key = 'prp_frames'),
+            Preprocessing_Step(data_pcs_key='pcs'),
+            PointCloudSaver_Step(
+                data_pcs_key='prp_pcs',
+                depth_param=depth_param,
+                result_dir=preprocessing_dir,
+                method_name='pc'
+            )
+        ])
+
+        res = pipeline(batch)
 
     def _get_pipeline(self, 
         method_name : str,
@@ -337,7 +369,10 @@ Repository: https://github.com/parham/lemanchot-fusion
         menu.append_item(submenu_visualize_item)
 
         # Create "Process Multi-modal Data" submenu
-        submenu_process = ConsoleMenu(title='Register Multi-modal Point Cloud', exit_option_text='Back to main menu')
+        submenu_process = ConsoleMenu(title='Multi-modal Point Cloud Pipelines', exit_option_text='Back to main menu')
+
+        menu_process_preprocessing = FunctionItem("Multi-modal Point Cloud Preprocessing", self.on_process_preprocessing)
+        submenu_process.append_item(menu_process_preprocessing)
 
         menu_process_filterreg = FunctionItem("Multi-modal Registration using FilterReg", lambda: self.on_process_registration('filterreg'))
         submenu_process.append_item(menu_process_filterreg)
@@ -357,7 +392,7 @@ Repository: https://github.com/parham/lemanchot-fusion
         menu_process_colored_icp = FunctionItem("Multi-modal Registration using Colored ICP", lambda: self.on_process_registration('colored_icp'))
         submenu_process.append_item(menu_process_colored_icp)
 
-        submenu_process_item = SubmenuItem('Register Multi-modal Point Cloud', submenu=submenu_process)
+        submenu_process_item = SubmenuItem('Multi-modal Point Cloud Pipelines', submenu=submenu_process)
         submenu_process_item.set_menu(menu)
         menu.append_item(submenu_process_item)
 
