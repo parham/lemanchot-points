@@ -79,33 +79,36 @@ class PointCloudSaver_Step(PipelineStep):
         data_pcs_key : str,
         result_dir : str,
         depth_param,
-        method_name : str = 'pc'):
+        method_name : str = 'pc',
+        disabled : bool = False):
         super().__init__({'pcs' : data_pcs_key})
         self.result_dir = result_dir
         self.method_name = method_name
         self.depth_param = depth_param
+        self.disabled = disabled
         # Make the directory if not exist!
         Path(result_dir).mkdir(parents=True, exist_ok=True)
 
     def _impl_func(self, **kwargs):
-        batch = kwargs['pcs']
-        pcs = batch if isinstance(batch, list) else [batch]
-        index = 1
-        print(f'\nTotal Number of Point Clouds : {len(pcs)}')
-        for pc in pcs:
-            fname_viz = f'{self.method_name}_visible_{index}.ply'
-            file_viz = os.path.join(self.result_dir, fname_viz)
-            fname_th = f'{self.method_name}_thermal_{index}.ply'
-            file_th = os.path.join(self.result_dir, fname_th)
-            print(f'Saving {fname_viz} (Visible) ...')
-            o3d.io.write_point_cloud(file_viz, 
-                pc.get_visible_point_cloud(intrinsic=self.depth_param), 
-                write_ascii = True, print_progress = True)
-            print(f'Saving {fname_th} (Thermal) ...')
-            o3d.io.write_point_cloud(file_th, 
-                pc.get_thermal_point_cloud(intrinsic=self.depth_param), 
-                write_ascii = True, print_progress = True)
-            index += 1
+        if not self.disabled:
+            batch = kwargs['pcs']
+            pcs = batch if isinstance(batch, list) else [batch]
+            index = 1
+            print(f'\nTotal Number of Point Clouds : {len(pcs)}')
+            for pc in pcs:
+                fname_viz = f'{self.method_name}_visible_{index}.ply'
+                file_viz = os.path.join(self.result_dir, fname_viz)
+                fname_th = f'{self.method_name}_thermal_{index}.ply'
+                file_th = os.path.join(self.result_dir, fname_th)
+                print(f'Saving {fname_viz} (Visible) ...')
+                o3d.io.write_point_cloud(file_viz, 
+                    pc.get_visible_point_cloud(intrinsic=self.depth_param), 
+                    write_ascii = True, print_progress = True)
+                print(f'Saving {fname_th} (Thermal) ...')
+                o3d.io.write_point_cloud(file_th, 
+                    pc.get_thermal_point_cloud(intrinsic=self.depth_param), 
+                    write_ascii = True, print_progress = True)
+                index += 1
 
 class AbstractRegistration_Step(PipelineStep):
     def __init__(self, data_pcs_key : str):

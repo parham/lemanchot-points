@@ -3,42 +3,45 @@ clear;
 clc;
 
 %% Settings
-dataset_name = 'concrete_vertical';
-dataDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20220525_concrete_vertical/results/aligned_pcs';
-metricsDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20220525_concrete_vertical/results/final_pcs';
 methodNames = {
     'colored_icp', 'cpd', 'filterreg', ...
     'gmmtree', 'svr', 'ndt', 'phase_correlation', 'fmr'
-};  
+}; 
 
-fprintf('%s is processing to provide metrics ...\n', dataset_name);
-fprintf('Root Dir >> %s\n', dataDir);
-metrics = struct();
-for mindx = 1:length(methodNames)
-    mname = methodNames{mindx};
-    fprintf('Analyzing metrics for %s ...\n', mname);
-    mfile = fullfile(metricsDir,sprintf('%s_metrics.csv',mname));
-    if isfile(mfile)
-        %% Loading metrics (from Python)
-        m = readmatrix(mfile);
-        metrics.(mname).('rmse') = m(:,1)';
-        metrics.(mname).('fitness') = m(:,2)';
-    end
-    %% Calculating metrics
-    metricDir = fullfile(dataDir, mname);
-    if isfolder(metricDir)
-        visibleFiles = dir(fullfile(metricDir, '*_visible_*.ply'));
-        thermalFiles = dir(fullfile(metricDir, '*_thermal_*.ply'));
-        pcs_viz = cell(length(visibleFiles),1);
-        pcs_th = cell(length(thermalFiles),1);
-        for index = 1:length(visibleFiles)
-            vfile = fullfile(visibleFiles(index).folder, visibleFiles(index).name);
-            tfile = fullfile(thermalFiles(index).folder, thermalFiles(index).name);
-            pcs_viz{index} = pcread(vfile);
-            pcs_viz{index}.Normal = pcnormals(pcs_viz{index});
-            pcs_th{index} = pcread(tfile);
-            pcs_th{index}.Normal = pcnormals(pcs_th{index});
+dataDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/results/iteration_pcs';
+tmp = dir(dataDir);
+tmp = tmp(3:end);
+iterationDir = {length(tmp),1};
+for i = 1:length(tmp)
+    iterationDir{i} = tmp(i).name;
+end
+
+%%
+
+for it = 1:length(iterationDir)
+    iter = iterationDir{it};
+    iterDir = fullfile(dataDir);
+    fprintf('iteration %d is processing to provide metrics ...\n', iter);
+    fprintf('Root Dir >> %s\n', iterDir);
+    metrics = struct();
+    for mindx = 1:length(methodNames)
+        mname = methodNames{mindx};
+        fprintf('Analyzing metrics for %s ...\n', mname);
+        mfile = fullfile(metricsDir,sprintf('%s_%s_metrics.csv',mname,iter));
+        if isfile(mfile)
+            %% Loading metrics (from Python)
+            m = readmatrix(mfile);
+            metrics.(mname).('rmse') = m(:,1)';
+            metrics.(mname).('fitness') = m(:,2)';
         end
+        %% Calculating metrics
+        fviz_1 = fullfile(iterDir, sprintf('%s_visible_1.ply', mname));
+        fviz_2 = fullfile(iterDir, sprintf('%s_visible_2.ply', mname));
+        
+        pc1 = pcread(fviz_1);
+        pc1.Normal = pcnormals(pc1);
+        pc2 = pcread(fviz_2);
+        pc2.Normal = pcnormals(pc2);
         % Configure PARAMS
         PARAMS.ATTRIBUTES.GEOM = true;
         PARAMS.ATTRIBUTES.NORM = true;
@@ -81,6 +84,7 @@ for mindx = 1:length(methodNames)
             end
         end
     end
+end
 end
 
 %% Save the results
