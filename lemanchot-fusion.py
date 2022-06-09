@@ -19,7 +19,7 @@ from configparser import ConfigParser
 
 from phm.dataset import VTD_Dataset, create_dual_point_cloud_dataset, create_mme_dataset, create_point_cloud_dataset, create_vtd_dataset
 from phm.io.vtd import load_RGBDnT
-from phm.pipeline.core import ConvertToPC_Step, FilterDepthRange_Step, Pipeline, PointCloudSaver_Step, Preprocessing_Step, RGBDnTBatch
+from phm.pipeline.core import ConvertToPC_Step, DoublePointCloudBatch, FilterDepthRange_Step, Pipeline, PointCloudSaver_Step, Preprocessing_Step, RGBDnTBatch, LoadBatch_Step
 from phm.pipeline.o3d_pipeline import ColoredICPRegistar_Step, O3DRegistrationMetrics_Step
 from phm.pipeline.manual_pipeline import ManualRegistration_Step
 from phm.pipeline.probreg_pipeline import CPDRegistration_Step, FilterregRegistration_Step, GMMTreeRegistration_Step, SVRRegistration_Step
@@ -191,11 +191,12 @@ Repository: https://github.com/parham/lemanchot-fusion
         aligned_result_dir : str,
         depth_param_file : str,
         depth_param
-    ):        
-        filter_depth = FilterDepthRange_Step()
-        convert2pc = ConvertToPC_Step(
-            depth_params_file = depth_param_file,
-            data_batch_key = 'prp_frames')
+    ):
+        load_data = LoadBatch_Step('batch')
+        # filter_depth = FilterDepthRange_Step()
+        # convert2pc = ConvertToPC_Step(
+        #     depth_params_file = depth_param_file,
+        #     data_batch_key = 'prp_frames')
         aligned_pc_saver = PointCloudSaver_Step(
             data_pcs_key='aligned_pcs',
             depth_param=depth_param,
@@ -211,52 +212,56 @@ Repository: https://github.com/parham/lemanchot-fusion
         metrics_step = O3DRegistrationMetrics_Step(data_pcs_key='pcs')
         if method_name == 'filterreg':
             return Pipeline([
-                filter_depth, convert2pc,
+                load_data,
                 FilterregRegistration_Step(
                     voxel_size = 0.05,
                     data_pcs_key='pcs', maxiter=40),
-                # ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
                 aligned_pc_saver, fused_pc_saver, metrics_step
             ])
+        # if method_name == 'filterreg':
+        #     return Pipeline([
+        #         filter_depth, convert2pc,
+        #         FilterregRegistration_Step(
+        #             voxel_size = 0.05,
+        #             data_pcs_key='pcs', maxiter=40),
+        #         # ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
+        #         aligned_pc_saver, fused_pc_saver, metrics_step
+        #     ])
         elif method_name == 'gmmtree':
             return Pipeline([
-                filter_depth, convert2pc,
+                load_data,
                 GMMTreeRegistration_Step(
                     voxel_size = 0.05,
                     data_pcs_key='pcs', maxiter=40),
-                ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
                 aligned_pc_saver, fused_pc_saver, metrics_step
             ])
         elif method_name == 'svr':
             return Pipeline([
-                filter_depth, convert2pc,
+                load_data,
                 SVRRegistration_Step(
                     voxel_size = 0.05,
                     data_pcs_key='pcs', maxiter=40),
-                ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
                 aligned_pc_saver, fused_pc_saver, metrics_step
             ])
         elif method_name == 'cpd':
             return Pipeline([
-                filter_depth, convert2pc,
+                load_data,
                 CPDRegistration_Step(
                     voxel_size = 0.05,
                     data_pcs_key='pcs'),
-                ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
                 aligned_pc_saver, fused_pc_saver, metrics_step
             ])
         elif method_name == 'manual':
             return Pipeline([
-                filter_depth, convert2pc,
+                load_data,
                 ManualRegistration_Step(
                     depth_params=depth_param,
                     data_pcs_key='pcs'),
-                ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=[1, 1, 1]),
                 aligned_pc_saver, fused_pc_saver, metrics_step
             ])
         elif method_name == 'colored_icp':
             return Pipeline([
-                filter_depth, convert2pc,
+                load_data,
                 ColoredICPRegistar_Step(data_pcs_key='pcs'),
                 aligned_pc_saver, fused_pc_saver, metrics_step
             ])
@@ -268,24 +273,42 @@ Repository: https://github.com/parham/lemanchot-fusion
         root_dir = self.settings.root_dir
         final_result_dir = os.path.join(root_dir, 'results', 'final_pcs')
         aligned_result_dir = os.path.join(root_dir, 'results', 'aligned_pcs', method_name)
-        vtd_dir = os.path.join(root_dir, 'vtd')
         depth_param_file = os.path.join(root_dir, 'depth/camera_info.json')
         depth_param = load_pinhole(depth_param_file)
         # Determine the VTD files
         # Input filenames
-        vtd_files = glob.glob(os.path.join(vtd_dir,'*_*.mat'))
-        vtd_files = [os.path.basename(f) for f in vtd_files]
-        for i in range(0, len(vtd_files), 3):
-            chunk = vtd_files[i:i + 3]
+        dpc_dir = os.path.join(root_dir, 'preprocessing')
+        dpc_files = glob.glob(os.path.join(dpc_dir, '*.ply'))
+        dpc_files = [os.path.basename(f) for f in dpc_files]
+        # Extract file ids
+        fids = []
+        for f in dpc_files:
+            tmp = f.split('_')[-1]
+            fids.append(tmp.split('.')[0])
+        fids = list(set(fids))
+        for i in range(0, len(fids), 6):
+            chunk = fids[i:i + 6]
             print(*chunk, sep = '\t')
         instr = input('Choose the filenames (seperated by comma) >> ')
-        vtd_files = instr.split(',')
-
+        fids = instr.split(',')
+        # Extract dual pcs
+        bfiles = [(f'pc_visible_{b}.ply',f'pc_thermal_{b}.ply') for b in fids]
         # Loading Dataset
-        batch = RGBDnTBatch(
-            root_dir = vtd_dir,
-            filenames = vtd_files
-        )
+        batch = DoublePointCloudBatch(dpc_dir, bfiles)
+
+        # vtd_dir = os.path.join(root_dir, 'vtd')
+        # vtd_files = glob.glob(os.path.join(vtd_dir,'*_*.mat'))
+        # vtd_files = [os.path.basename(f) for f in vtd_files]
+        # for i in range(0, len(vtd_files), 3):
+        #     chunk = vtd_files[i:i + 3]
+        #     print(*chunk, sep = '\t')
+        # instr = input('Choose the filenames (seperated by comma) >> ')
+        # vtd_files = instr.split(',')
+        # # Loading Dataset
+        # batch = RGBDnTBatch(
+        #     root_dir = vtd_dir,
+        #     filenames = vtd_files
+        # )
 
         # Create the processing pipeline
         pipobj = self._get_pipeline(method_name,
@@ -329,7 +352,8 @@ Repository: https://github.com/parham/lemanchot-fusion
         menu = ConsoleMenu(color("LeManchot-Fusion", fg='blue'),
             "The toolbox for fusion and processing of multi-modal data collected by LeManchot-DC system.",
             prologue_text=self.tool_discription,
-            formatter=self.menu_format)
+            formatter=self.menu_format,
+            clear_screen=False)
 
         menu_set_root_dir = FunctionItem("Set/Change Root Directory", self.on_set_root_dir)
         menu.append_item(menu_set_root_dir)

@@ -12,6 +12,7 @@ import open3d as o3d
 from phm.data import RGBDnT
 from phm.io import load_RGBDnT
 from phm.data.vtd import DualPointCloudPack, __depth_scale__, filter_out_zero_thermal
+from phm.io.vtd import load_dual_point_cloud
 from phm.vtd import load_pinhole
 
 class RGBDnTBatch:
@@ -34,6 +35,26 @@ class RGBDnTBatch:
 
     def __call__(self):
         return (load_RGBDnT(fx) for fx in self.files)
+
+class DoublePointCloudBatch:
+    def __init__(self, root_dir : str, filenames : List[Tuple]) -> None:
+        # Check file availability
+        if len(filenames) == 0:
+            raise ValueError('No RGBD&T file exist!')
+        # Check Root Directory Availability
+        if not os.path.isdir(root_dir):
+            raise FileNotFoundError(f'{root_dir} does not exist!')
+        # Initialize the file list
+        files = tuple(map(lambda x : (os.path.join(root_dir, x[0]),os.path.join(root_dir, x[1])), filenames))
+        files = tuple(filter(lambda x : os.path.isfile(x[0]) and os.path.isfile(x[1]), files))
+        self.files = files
+
+    @property
+    def count(self):
+        return len(self.files)
+
+    def __call__(self):
+        return (load_dual_point_cloud(fx[0], fx[1]) for fx in self.files)
 
 class PipelineStep:
     def __init__(self, key_arg_map : Dict[str,str]):
@@ -121,6 +142,19 @@ class AbstractRegistration_Step(PipelineStep):
 
     def _register(self, src, tgt):
         pass
+
+class LoadBatch_Step(PipelineStep):
+    def __init__(self, data_batch_key : str = 'batch'):
+        super().__init__({
+            'batch' : data_batch_key
+        })
+    
+    def _impl_func(self, **kwargs):
+        batch = kwargs['batch']
+        return {
+            'pcs' : list(batch())
+        }
+
 
 class FilterDepthRange_Step(PipelineStep):
     def __init__(self, depth_range = [1, 2.5], data_batch_key : str = 'batch'):

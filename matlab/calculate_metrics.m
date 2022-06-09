@@ -3,13 +3,13 @@ clear;
 clc;
 
 %% Settings
-dataset_name = 'pipe_heating';
-dataDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/results/aligned_pcs/';
-metricsDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/results/final_pcs';
+dataset_name = 'concrete_vertical';
+dataDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20220525_concrete_horizontal/results/aligned_pcs';
+metricsDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20220525_concrete_horizontal/results/final_pcs';
 methodNames = {
     'colored_icp', 'cpd', 'filterreg', ...
     'gmmtree', 'svr', 'ndt'
-};
+};  
 
 fprintf('%s is processing to provide metrics ...\n', dataset_name);
 fprintf('Root Dir >> %s\n', dataDir);
