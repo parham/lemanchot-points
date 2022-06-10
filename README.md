@@ -17,7 +17,7 @@
 
 ## LeManchot-Fusion
 
-The presented system provides different tools for working with multi-modal data which some of them are explained in below.
+Thermography is a Non-Destructive Testing (NDT) technology that measures the thermal distribution of a specimen by quantifying the electromagnetic radiation emitted, reflected and transmitted at lower frequency than the visible light part of the spectrum. Despite some previous studies addressing the estimation of surface and shape characterization from multiple or single active thermograms \cite{barker1995shape,pelletier1997shape}, thermography, by nature, is a bi-dimensional sensing technology unable to provide information about the specimen's texture and geometry without any preparatory process. Thus, many studies have recently focused on using multi-modal platforms to obtain extensive information about the inspected scene. Still, data availability and algorithm implementation difficulties are faced by the analysts when performing the registration of consecutive 3D data from multiple sensors and Fields of Views (FOVs). This study presents a complete solution for multi-modal inspection of industrial components, including a processing pipeline for registering consecutive multi-modal point clouds. A comparative evaluation of optimization and learning based registration methods is provided as part of the processing pipeline. Moreover, a benchmark dataset of point cloud data from different FOVs of industrial and construction components is provided (Lemanchot-points), having 5 point clouds with depth, color, and thermal information at each point. The  experimental campaign conducted with different objects demonstrates the proposed solution's applicability for the multi-modal inspection of industrial components. 
 
 ### Multi-Modal Visualizer
 
@@ -25,22 +25,6 @@ The presented system provides different tools for working with multi-modal data 
   <img src="resources/cli_tools.gif" width="800" title="MME Visualizer 1">
 </p>
 
-## TODO
-- [X] Data Acquisition and Preparation
-- [X] Implement the method for generating RGBD&T data (automated fusion and alignment)
-  - [ ] Align thermal and visible images:
-      - [X] Using control points
-      - [ ] Using board
-- [X] Implement the method for converting RGBD&T to multi-channel point cloud
-- [X] Implement the visualization method for the point cloud.
-- [X] Implement the multi-point cloud registration method using maybe ICP or similar methods!
-- [X] Implement the system visualization.
-- [ ] Implement metrics for evaluating the techniques.
-
-#### Experiments
-- [ ] A Table showing the metrics of selected techniques for visible and thermal point clouds.
-- [ ] Figure: x-axis iterations, y-axis metrics (for each metric, one figure)
-- [ ] Figure: running time for each technique to reach the minimum acceptable metric.
 
 ## Contributors
 **Parham Nooralishahi** - parham.nooralishahi@gmail.com | [@phm](https://www.linkedin.com/in/parham-nooralishahi/) <br/>
