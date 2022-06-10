@@ -1,11 +1,14 @@
 
 import os
 import numpy as np
+import open3d as o3d
 
 from plyfile import PlyData, PlyElement
 from typing import List, Tuple, Union
 from scipy.io import savemat, loadmat
+
 from phm.data import RGBDnT
+from phm.data.vtd import DualPointCloudPack
 
 __rgbdt__ = 'rgbdt'
 __fid__ = 'fid'
@@ -109,3 +112,12 @@ def save_dual_point_cloud(
             PlyElement.describe(pcv, 'vertex', comments=['points (x,y,z, r,g,b)'])
         ], text=True, byte_order='=', comments=['Multi-modal Point Cloud (position : x y z, color : RGB']
     ).write(pcv_file)
+
+def load_dual_point_cloud(
+    visible_pc_file : str,
+    thermal_pc_file : str
+):
+    vizpc = o3d.io.read_point_cloud(visible_pc_file)
+    thpc = o3d.io.read_point_cloud(thermal_pc_file)
+
+    return DualPointCloudPack(vizpc, thpc)

@@ -1,8 +1,11 @@
 
 
-from ast import Sub
 import os
 import glob
+import logging
+import sys
+import csv
+
 import open3d as o3d
 import open3d.visualization.gui as gui
 
@@ -14,15 +17,34 @@ from colors import color
 from dotmap import DotMap
 from configparser import ConfigParser
 
-from phm.dataset import create_dual_point_cloud_dataset, create_mme_dataset, create_point_cloud_dataset, create_vtd_dataset
+from phm.dataset import VTD_Dataset, create_dual_point_cloud_dataset, create_mme_dataset, create_point_cloud_dataset, create_vtd_dataset
 from phm.io.vtd import load_RGBDnT
-from phm.visualization import VTD_Visualization
+from phm.pipeline.core import ConvertToPC_Step, DoublePointCloudBatch, FilterDepthRange_Step, Pipeline, PointCloudSaver_Step, Preprocessing_Step, RGBDnTBatch, LoadBatch_Step
+from phm.pipeline.o3d_pipeline import ColoredICPRegistar_Step, O3DRegistrationMetrics_Step
+from phm.pipeline.manual_pipeline import ManualRegistration_Step
+from phm.pipeline.probreg_pipeline import CPDRegistration_Step, FilterregRegistration_Step, GMMTreeRegistration_Step, SVRRegistration_Step
+from phm.visualization import VTD_Visualization, visualize_vtd
 from phm.vtd import load_pinhole
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.FileHandler("system.log"), logging.StreamHandler(sys.stdout)],
+)
+
 class CLI_Tool:
-    def __init__(self) -> None:
+    def __init__(self, root_dir : str = None) -> None:
         self.settings = DotMap()
-        self.settings.root_dir = os.getcwd()
+        self.set_root_dir(root_dir if root_dir is not None else os.getcwd())
+    
+    def set_root_dir(self, root_dir : str):
+        if not os.path.isdir(root_dir):
+            msg = 'The directory does not exist!'
+            print(color(msg, fg='red'))
+            raise FileNotFoundError(msg)
+        
+        self.settings.root_dir = root_dir
+        self.on_load_settings()
     
     @property
     def menu_format(self):
@@ -48,16 +70,9 @@ Repository: https://github.com/parham/lemanchot-fusion
         '''
 
     def on_set_root_dir(self):
-
         print(f'Current root directory >> {self.settings.root_dir}')
-
-        self.settings.root_dir = None
         rdir = input('Enter new root directory >> ')
-        if not os.path.isdir(rdir):
-            print(color('The directory does not exist!', fg='red'))
-            return
-        
-        self.settings.root_dir = rdir
+        self.set_root_dir(rdir)
 
     def on_load_settings(self):
         __info_file = os.path.join(self.settings.root_dir, 'ds.ini')
@@ -138,6 +153,212 @@ Repository: https://github.com/parham/lemanchot-fusion
         gui.Application.instance.run()
         print('VTD visualization is finished!')
 
+    def on_process_preprocessing(self):
+
+        root_dir = self.settings.root_dir
+        vtd_dir = os.path.join(root_dir, 'vtd')
+        preprocessing_dir = os.path.join(root_dir, 'preprocessing')
+        depth_param_file = os.path.join(root_dir, 'depth/camera_info.json')
+        depth_param = load_pinhole(depth_param_file)
+        # Input filenames
+        vtd_files = glob.glob(os.path.join(vtd_dir,'*_*.mat'))
+        vtd_files = [os.path.basename(f) for f in vtd_files]
+        # Loading Dataset
+        batch = RGBDnTBatch(
+            root_dir = vtd_dir,
+            filenames = vtd_files
+        )
+
+        pipeline = Pipeline([
+            FilterDepthRange_Step(),
+            ConvertToPC_Step(
+                depth_params_file = depth_param_file,
+                data_batch_key = 'prp_frames'),
+            Preprocessing_Step(data_pcs_key='pcs'),
+            PointCloudSaver_Step(
+                data_pcs_key='prp_pcs',
+                depth_param=depth_param,
+                result_dir=preprocessing_dir,
+                method_name='pc'
+            )
+        ])
+
+        res = pipeline(batch)
+
+    def _get_pipeline(self, 
+        method_name : str,
+        final_result_dir : str,
+        aligned_result_dir : str,
+        depth_param_file : str,
+        depth_param,
+        iteration : int = None,
+        fused_saver_disabled : bool = False
+    ):
+        load_data = LoadBatch_Step('batch')
+        aligned_pc_saver = PointCloudSaver_Step(
+            data_pcs_key='aligned_pcs',
+            depth_param=depth_param,
+            result_dir=aligned_result_dir,
+            method_name=method_name
+        )
+        fused_pc_saver = PointCloudSaver_Step(
+            data_pcs_key='fused_pc',
+            depth_param=depth_param,
+            result_dir=final_result_dir,
+            method_name=method_name,
+            disabled=fused_saver_disabled
+        )
+        metrics_step = O3DRegistrationMetrics_Step(data_pcs_key='pcs')
+        if method_name == 'filterreg':
+            return Pipeline([
+                load_data,
+                FilterregRegistration_Step(
+                    voxel_size = 0.05,
+                    data_pcs_key='pcs',
+                    maxiter=iteration if iteration is not None else 40),
+                aligned_pc_saver, fused_pc_saver, metrics_step
+            ])
+        elif method_name == 'gmmtree':
+            return Pipeline([
+                load_data,
+                GMMTreeRegistration_Step(
+                    voxel_size = 0.05,
+                    data_pcs_key='pcs', 
+                    maxiter=iteration if iteration is not None else 40),
+                aligned_pc_saver, fused_pc_saver, metrics_step
+            ])
+        elif method_name == 'svr':
+            return Pipeline([
+                load_data,
+                SVRRegistration_Step(
+                    voxel_size = 0.05,
+                    data_pcs_key='pcs', 
+                    maxiter=iteration if iteration is not None else 40),
+                aligned_pc_saver, fused_pc_saver, metrics_step
+            ])
+        elif method_name == 'cpd':
+            return Pipeline([
+                load_data,
+                CPDRegistration_Step(
+                    voxel_size = 0.05,
+                    data_pcs_key='pcs',
+                    maxiter=iteration if iteration is not None else 50),
+                aligned_pc_saver, fused_pc_saver, metrics_step
+            ])
+        elif method_name == 'manual':
+            return Pipeline([
+                load_data,
+                ManualRegistration_Step(
+                    depth_params=depth_param,
+                    data_pcs_key='pcs'),
+                aligned_pc_saver, fused_pc_saver, metrics_step
+            ])
+        elif method_name == 'colored_icp':
+            maxiter = iteration if iteration is not None else 60
+            maxiter = [maxiter, int(maxiter / 2), int(maxiter / 4)]
+            return Pipeline([
+                load_data,
+                ColoredICPRegistar_Step(data_pcs_key='pcs', max_iter=maxiter),
+                aligned_pc_saver, fused_pc_saver, metrics_step
+            ])
+        else:
+            raise NotImplementedError(f'{method_name} is not supported!')
+    
+    def on_process_registration(self, method_name, iteration = 40):
+        root_dir = self.settings.root_dir
+        final_result_dir = os.path.join(root_dir, 'results', 'final_pcs')
+        aligned_result_dir = os.path.join(root_dir, 'results', 'aligned_pcs', method_name)
+        depth_param_file = os.path.join(root_dir, 'depth/camera_info.json')
+        depth_param = load_pinhole(depth_param_file)
+        # Determine the VTD files
+        # Input filenames
+        dpc_dir = os.path.join(root_dir, 'preprocessing')
+        dpc_files = glob.glob(os.path.join(dpc_dir, '*.ply'))
+        dpc_files = [os.path.basename(f) for f in dpc_files]
+        # Extract file ids
+        fids = []
+        for f in dpc_files:
+            tmp = f.split('_')[-1]
+            fids.append(tmp.split('.')[0])
+        fids = list(set(fids))
+        for i in range(0, len(fids), 6):
+            chunk = fids[i:i + 6]
+            print(*chunk, sep = '\t')
+        instr = input('Choose the filenames (seperated by comma) >> ')
+        fids = instr.split(',')
+        # Extract dual pcs
+        bfiles = [(f'pc_visible_{b}.ply',f'pc_thermal_{b}.ply') for b in fids]
+        # Loading Dataset
+        batch = DoublePointCloudBatch(dpc_dir, bfiles)
+        # Create the processing pipeline
+        pipobj = self._get_pipeline(method_name,
+            final_result_dir, aligned_result_dir,
+            depth_param_file, depth_param, iteration)
+        # Apply the pipeline on loaded data
+        res = pipobj(batch)
+        res_pc = res['fused_pc']
+        metrics = res['metrics']
+
+        self.__save_metrics(final_result_dir, method_name, metrics)
+        visualize_vtd(
+            res_pc, depth_param,
+            f'Result of {method_name} technique', 1024, 768)
+
+    def on_process_iteration(self, method_name):
+        root_dir = self.settings.root_dir
+        depth_param_file = os.path.join(root_dir, 'depth/camera_info.json')
+        depth_param = load_pinhole(depth_param_file)
+
+        # Determine the VTD files
+        # Input filenames
+        dpc_dir = os.path.join(root_dir, 'preprocessing')
+        dpc_files = glob.glob(os.path.join(dpc_dir, '*.ply'))
+        dpc_files = [os.path.basename(f) for f in dpc_files]
+        # Extract file ids
+        fids = []
+        for f in dpc_files:
+            tmp = f.split('_')[-1]
+            fids.append(tmp.split('.')[0])
+        fids = list(set(fids))
+        for i in range(0, len(fids), 6):
+            chunk = fids[i:i + 6]
+            print(*chunk, sep = '\t')
+        instr = input('Choose the filenames (seperated by comma) >> ')
+        fids = instr.split(',')
+        # Extract dual pcs
+        bfiles = [(f'pc_visible_{b}.ply',f'pc_thermal_{b}.ply') for b in fids]
+        # Loading Dataset
+        batch = DoublePointCloudBatch(dpc_dir, bfiles)
+        for iteration in range(1,51,5):
+            print(f'Iteration >> {iteration}')
+            final_result_dir = os.path.join(root_dir, 'results', 'iteration_pcs', f'{iteration}')
+            aligned_result_dir = os.path.join(root_dir, 'results', 'iteration_pcs', f'{iteration}')
+            # Create the processing pipeline
+            pipobj = self._get_pipeline(method_name,
+                final_result_dir, aligned_result_dir,
+                depth_param_file, depth_param, iteration, True)
+            # Apply the pipeline on loaded data
+            res = pipobj(batch)
+            res_pc = res['fused_pc']
+            metrics = res['metrics']
+            # Save metrics
+            self.__save_metrics(final_result_dir, f'{method_name}_{iteration}', metrics)
+
+    def __save_metrics(self, result_dir, method_name, metrics):
+        with open(os.path.join(result_dir, f'{method_name}_metrics.csv'), 'w', newline='') as csvfile:
+            keys = tuple(metrics.keys())
+
+            records = []
+            for index in range(len(metrics[keys[0]])):
+                tmp = {}
+                for k in keys:
+                    tmp[k] = metrics[k][index]
+                records.append(tmp)
+
+            writer = csv.DictWriter(csvfile, fieldnames=keys)
+            writer.writeheader()
+            writer.writerows(records)
+
     def __load_init_settings(self, fs):
         config = ConfigParser()
         config.read(fs)
@@ -151,12 +372,13 @@ Repository: https://github.com/parham/lemanchot-fusion
         menu = ConsoleMenu(color("LeManchot-Fusion", fg='blue'),
             "The toolbox for fusion and processing of multi-modal data collected by LeManchot-DC system.",
             prologue_text=self.tool_discription,
-            formatter=self.menu_format)
+            formatter=self.menu_format,
+            clear_screen=False)
 
         menu_set_root_dir = FunctionItem("Set/Change Root Directory", self.on_set_root_dir)
         menu.append_item(menu_set_root_dir)
         
-        menu_load_settings = FunctionItem("Load Settings", self.on_load_settings)
+        menu_load_settings = FunctionItem("Reload Settings", self.on_load_settings)
         menu.append_item(menu_load_settings)
         
         # Create "Create Multi-modal data" submenu
@@ -186,17 +408,64 @@ Repository: https://github.com/parham/lemanchot-fusion
         menu_viz_pc_data = FunctionItem("Visualize Multi-modal Point Cloud", self.on_visualize_mm_point_cloud)
         submenu_visualize.append_item(menu_viz_pc_data)
 
-        submenu_visualize_item = SubmenuItem('Visualize Multi-modal Data', submenu=submenu_create)
+        submenu_visualize_item = SubmenuItem('Visualize Multi-modal Data', submenu=submenu_visualize)
         submenu_visualize_item.set_menu(menu)
         menu.append_item(submenu_visualize_item)
 
         # Create "Process Multi-modal Data" submenu
-        submenu_process = ConsoleMenu(title='Process Multi-modal Data', exit_option_text='Back to main menu')
+        submenu_process = ConsoleMenu(title='Multi-modal Point Cloud Pipelines', exit_option_text='Back to main menu')
+
+        menu_process_preprocessing = FunctionItem("Multi-modal Point Cloud Preprocessing", self.on_process_preprocessing)
+        submenu_process.append_item(menu_process_preprocessing)
+
+        menu_process_filterreg = FunctionItem("Multi-modal Registration using FilterReg", lambda: self.on_process_registration('filterreg'))
+        submenu_process.append_item(menu_process_filterreg)
+
+        menu_process_gmtree = FunctionItem("Multi-modal Registration using GMMTree", lambda: self.on_process_registration('gmmtree'))
+        submenu_process.append_item(menu_process_gmtree)
+
+        menu_process_svr = FunctionItem("Multi-modal Registration using SVR", lambda: self.on_process_registration('svr'))
+        submenu_process.append_item(menu_process_svr)
+
+        menu_process_cpd = FunctionItem("Multi-modal Registration using CPD", lambda: self.on_process_registration('cpd'))
+        submenu_process.append_item(menu_process_cpd)
+
+        menu_process_manual = FunctionItem("Multi-modal Registration Manually", lambda: self.on_process_registration('manual'))
+        submenu_process.append_item(menu_process_manual)
+
+        menu_process_colored_icp = FunctionItem("Multi-modal Registration using Colored ICP", lambda: self.on_process_registration('colored_icp'))
+        submenu_process.append_item(menu_process_colored_icp)
+
+        #################
+        menu_process_filterreg_itr = FunctionItem("IterationAnalysis (FilterReg)", lambda: self.on_process_iteration('filterreg'))
+        submenu_process.append_item(menu_process_filterreg_itr)
+
+        menu_process_gmtree_itr = FunctionItem("IterationAnalysis (GMMTree)", lambda: self.on_process_iteration('gmmtree'))
+        submenu_process.append_item(menu_process_gmtree_itr)
+
+        menu_process_svr_itr = FunctionItem("IterationAnalysis (SVR)", lambda: self.on_process_iteration('svr'))
+        submenu_process.append_item(menu_process_svr_itr)
+
+        menu_process_cpd_itr = FunctionItem("IterationAnalysis (CPD)", lambda: self.on_process_iteration('cpd'))
+        submenu_process.append_item(menu_process_cpd_itr)
+
+        menu_process_colored_icp_itr = FunctionItem("IterationAnalysis (Colored ICP)", lambda: self.on_process_iteration('colored_icp'))
+        submenu_process.append_item(menu_process_colored_icp_itr)
+        #################
+
+        submenu_process_item = SubmenuItem('Multi-modal Point Cloud Pipelines', submenu=submenu_process)
+        submenu_process_item.set_menu(menu)
+        menu.append_item(submenu_process_item)
 
         menu.show()
 
 def main():
-    cli = CLI_Tool()
+
+    args = sys.argv
+    if len(args) != 2:
+        print('Invalid arguments has been detected!')
+
+    cli = CLI_Tool(root_dir=args[1])
     cli.run()
 
 if __name__ == '__main__':

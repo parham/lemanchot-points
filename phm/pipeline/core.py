@@ -1,13 +1,18 @@
 
+import copy
 import os
+from sys import prefix
 
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Dict, List, Tuple
 from progress.bar import Bar
-from phm import data
+from pathlib import Path
+
+import open3d as o3d
 
 from phm.data import RGBDnT
 from phm.io import load_RGBDnT
-from phm.data.vtd import DualPointCloudPack, __depth_scale__
+from phm.data.vtd import DualPointCloudPack, __depth_scale__, filter_out_zero_thermal
+from phm.io.vtd import load_dual_point_cloud
 from phm.vtd import load_pinhole
 
 class RGBDnTBatch:
@@ -31,6 +36,26 @@ class RGBDnTBatch:
     def __call__(self):
         return (load_RGBDnT(fx) for fx in self.files)
 
+class DoublePointCloudBatch:
+    def __init__(self, root_dir : str, filenames : List[Tuple]) -> None:
+        # Check file availability
+        if len(filenames) == 0:
+            raise ValueError('No RGBD&T file exist!')
+        # Check Root Directory Availability
+        if not os.path.isdir(root_dir):
+            raise FileNotFoundError(f'{root_dir} does not exist!')
+        # Initialize the file list
+        files = tuple(map(lambda x : (os.path.join(root_dir, x[0]),os.path.join(root_dir, x[1])), filenames))
+        files = tuple(filter(lambda x : os.path.isfile(x[0]) and os.path.isfile(x[1]), files))
+        self.files = files
+
+    @property
+    def count(self):
+        return len(self.files)
+
+    def __call__(self):
+        return (load_dual_point_cloud(fx[0], fx[1]) for fx in self.files)
+
 class PipelineStep:
     def __init__(self, key_arg_map : Dict[str,str]):
         self.key_map = key_arg_map
@@ -49,6 +74,42 @@ class PipelineStep:
     def __call__(self, **kwargs):
         return self._impl_func(**self._generate_args(**kwargs))
 
+class PointCloudSaver_Step(PipelineStep):
+    def __init__(self, 
+        data_pcs_key : str,
+        result_dir : str,
+        depth_param,
+        method_name : str = 'pc',
+        disabled : bool = False):
+        super().__init__({'pcs' : data_pcs_key})
+        self.result_dir = result_dir
+        self.method_name = method_name
+        self.depth_param = depth_param
+        self.disabled = disabled
+        # Make the directory if not exist!
+        Path(result_dir).mkdir(parents=True, exist_ok=True)
+
+    def _impl_func(self, **kwargs):
+        if not self.disabled:
+            batch = kwargs['pcs']
+            pcs = batch if isinstance(batch, list) else [batch]
+            index = 1
+            print(f'\nTotal Number of Point Clouds : {len(pcs)}')
+            for pc in pcs:
+                fname_viz = f'{self.method_name}_visible_{index}.ply'
+                file_viz = os.path.join(self.result_dir, fname_viz)
+                fname_th = f'{self.method_name}_thermal_{index}.ply'
+                file_th = os.path.join(self.result_dir, fname_th)
+                print(f'Saving {fname_viz} (Visible) ...')
+                o3d.io.write_point_cloud(file_viz, 
+                    pc.get_visible_point_cloud(intrinsic=self.depth_param), 
+                    write_ascii = True, print_progress = True)
+                print(f'Saving {fname_th} (Thermal) ...')
+                o3d.io.write_point_cloud(file_th, 
+                    pc.get_thermal_point_cloud(intrinsic=self.depth_param), 
+                    write_ascii = True, print_progress = True)
+                index += 1
+
 class AbstractRegistration_Step(PipelineStep):
     def __init__(self, data_pcs_key : str):
         super().__init__({'pcs' : data_pcs_key})
@@ -57,7 +118,8 @@ class AbstractRegistration_Step(PipelineStep):
     def _impl_func(self, **kwargs):
         batch = kwargs['pcs']
 
-        res_pc = list(batch[0])
+        pcs = list([DualPointCloudPack(batch[0][0], batch[0][1])])
+        res_pc = list(copy.deepcopy(batch[0]))
         for index in range(1,len(batch)):
             source = batch[index][0]
             target = res_pc[0]
@@ -66,8 +128,10 @@ class AbstractRegistration_Step(PipelineStep):
 
             res_pc[0] += batch[index][0]
             res_pc[1] += batch[index][1]
+            pcs.append(DualPointCloudPack(batch[index][0], batch[index][1]))
 
         return {
+            'aligned_pcs' : pcs,
             f'{self.pcs_key}' : batch,
             'fused_pc' : DualPointCloudPack(res_pc[0], res_pc[1])
         }
@@ -82,12 +146,18 @@ class AbstractRegistration_Step(PipelineStep):
     def _register(self, src, tgt):
         pass
 
-class CalculateMetrics_Step(PipelineStep):
-    def __init__(self, data_pcs_key : str,
-        metrics = []
-    ):
-        super().__init__({'pcs' : data_pcs_key})
-        self.metrics = metrics
+class LoadBatch_Step(PipelineStep):
+    def __init__(self, data_batch_key : str = 'batch'):
+        super().__init__({
+            'batch' : data_batch_key
+        })
+    
+    def _impl_func(self, **kwargs):
+        batch = kwargs['batch']
+        return {
+            'pcs' : list(batch())
+        }
+
 
 class FilterDepthRange_Step(PipelineStep):
     def __init__(self, depth_range = [1, 2.5], data_batch_key : str = 'batch'):
@@ -133,6 +203,25 @@ class ConvertToPC_Step(PipelineStep):
             data.to_point_cloud_thermal_o3d(self.depth_params, False)
         )
 
+class Preprocessing_Step(PipelineStep):
+    def __init__(self, data_pcs_key : str):
+        super().__init__({'pcs' : data_pcs_key})
+
+    def _impl_func(self, **kwargs):
+        batch = kwargs['pcs']
+        pcs = []
+        for index in range(len(batch)):
+            visible_pc = batch[index][0]
+            thermal_pc = batch[index][1]
+
+            visible_pc,_ = visible_pc.remove_statistical_outlier(nb_neighbors=8, std_ratio=0.005, print_progress=True)
+            thermal_pc,_ = thermal_pc.remove_statistical_outlier(nb_neighbors=8, std_ratio=0.005, print_progress=True)
+            thermal_pc = filter_out_zero_thermal(thermal_pc)
+            pcs.append(DualPointCloudPack(visible_pc, thermal_pc))
+
+        return {'prp_pcs' : pcs}
+
+
 class Pipeline(object):
 
     def __init__(self, steps : List[PipelineStep] = None):
@@ -150,7 +239,9 @@ class Pipeline(object):
         res = {'batch' : batch}
         with Bar('Processing using pipeline steps', max=self.steps_count) as bar:
             for step in self.steps:
-                res = {**res, **step(**res)}
+                d_res = step(**res)
+                if d_res is not None:
+                    res = {**res, **d_res}
                 bar.next()
         
         return res

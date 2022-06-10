@@ -11,6 +11,15 @@ from dataclasses import dataclass
 
 __depth_scale__ = 1000
 
+def filter_out_zero_thermal(pct):
+    points = np.asarray(pct.points) 
+    temps = np.asarray(pct.colors)
+    temps_v = np.mean(temps, axis=1)
+
+    pct.points = o3d.utility.Vector3dVector(points[temps_v > 0, :])
+    pct.colors = o3d.utility.Vector3dVector(temps[temps_v > 0, :])
+    return pct
+
 class O3DPointCloudWrapper:
     def get_thermal_point_cloud(self, **kwargs):
         raise NotImplementedError('get_thermal_point_cloud is not implemented!')
@@ -33,6 +42,19 @@ class O3DPointCloudWrapper:
         colors[temps_v > 0, :] = temps[temps_v > 0, :]
         pcv_copy.colors = o3d.utility.Vector3dVector(colors)
         return pcv_copy
+
+    def __getitem__(self, index):
+        pc = None
+        if index == 0:
+            pc = self.get_visible_point_cloud()
+        elif index == 1:
+            pc = self.get_thermal_point_cloud(remove_invalids=True)
+        else:
+            raise IndexError()
+        return pc
+    
+    def __len__(self):
+        return 2
 
 @dataclass
 class RGBDnT(O3DPointCloudWrapper):
@@ -171,12 +193,7 @@ class RGBDnT(O3DPointCloudWrapper):
 
         pct = self._convert_point_cloud_o3d(self.to_RGBD_thermal_o3d(), intrinsic, calc_normals)
         if remove_invalids:
-            points = np.asarray(pct.points) 
-            temps = np.asarray(pct.colors)
-            temps_v = np.mean(temps, axis=1)
-
-            pct.points = o3d.utility.Vector3dVector(points[temps_v > 0, :])
-            pct.colors = o3d.utility.Vector3dVector(temps[temps_v > 0, :])
+            pct = filter_out_zero_thermal(pct)
         return pct
 
     def to_point_cloud_fusion_o3d(self,
@@ -210,12 +227,7 @@ class DualPointCloudPack(O3DPointCloudWrapper):
     def get_thermal_point_cloud(self, **kwargs):
         pct = self.thermal_pointcloud 
         if 'remove_invalids' in kwargs and kwargs['remove_invalids']:
-            points = np.asarray(pct.points) 
-            temps = np.asarray(pct.colors)
-            temps_v = np.mean(temps, axis=1)
-
-            pct.points = o3d.utility.Vector3dVector(points[temps_v > 0, :])
-            pct.colors = o3d.utility.Vector3dVector(temps[temps_v > 0, :])
+            pct = filter_out_zero_thermal(copy.deepcopy(pct))
 
         return pct
     
