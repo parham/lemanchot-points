@@ -104,6 +104,17 @@ for mindx = 1:length(methodNames)
     csvwrite_with_headers(resFile,tbl,metricsNames)
 end
 
-
-
-
+%% Calculate Mean
+for mindx = 1:length(methodNames)
+    mname = methodNames{mindx};
+    if ~isfield(metrics,mname)
+        continue;
+    end
+    mres = metrics.(mname);
+    metricsNames = fieldnames(mres);
+    colNum = numel(metricsNames);
+    for k=1:colNum
+        m = mres.(metricsNames{k});
+        fprintf('%s -- %s -- %f \n', mname, metricsNames{k}, mean(m));
+    end
+end

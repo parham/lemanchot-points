@@ -4,7 +4,7 @@ clc;
 
 %% Settings
 methodNames = {
-    'colored_icp' %, 'cpd', 'filterreg', 'gmmtree', 'svr', 'ndt', 'phase_correlation', 'fmr'
+    'colored_icp', 'cpd', 'filterreg', 'gmmtree', 'svr', 'ndt', 'phase_correlation', 'fmr'
 }; 
 
 dataDir = '/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/results/iteration_pcs';
@@ -12,7 +12,9 @@ tmp = dir(dataDir);
 tmp = tmp(3:end);
 iterationDir = {length(tmp),1};
 for i = 1:length(tmp)
-    iterationDir{i} = tmp(i).name;
+    if isfolder(fullfile(tmp(i).folder, tmp(i).name))
+        iterationDir{i} = tmp(i).name;
+    end
 end
 
 %%
@@ -37,6 +39,10 @@ for it = 1:length(iterationDir)
         fviz_1 = fullfile(iterDir, sprintf('%s_visible_1.ply', mname));
         fviz_2 = fullfile(iterDir, sprintf('%s_visible_2.ply', mname));
         
+        if ~(isfile(fviz_1) & isfile(fviz_1))
+            continue;
+        end
+
         pc1 = pcread(fviz_1);
         pc1.Normal = pcnormals(pc1);
         pc2 = pcread(fviz_2);
