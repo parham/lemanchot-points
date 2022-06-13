@@ -53,6 +53,10 @@ Thermography is a Non-Destructive Testing (NDT) technology that measures the the
   <img src="resources/iteration_results.png" width="800" title="Result of Iteration Analysis">
 </p>
 
+## Dataset 
+
+Dataset provided in this study is avaliable upon request.
+
 ## Contributors
 **Parham Nooralishahi** - parham.nooralishahi@gmail.com | [@phm](https://www.linkedin.com/in/parham-nooralishahi/) <br/>
 **Sandra Pozzer** - sandra.pozzer.1@ulaval.ca | [@sandra](https://www.linkedin.com/in/sandra-pozzer/) <br/>
