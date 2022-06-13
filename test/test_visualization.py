@@ -28,20 +28,20 @@ class Test_Visualization(unittest.TestCase):
         # Run the event loop. This will not return until the last window is closed.
         gui.Application.instance.run()
 
-    def test_win_app_pc(self):
+    # def test_win_app_pc(self):
         
-        data = load_dual_point_cloud(
-            visible_pc_file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/preprocessing/pc_visible_1.ply',
-            thermal_pc_file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20210722_pipe_heating/preprocessing/pc_thermal_1.ply'
-        )
+    #     data = load_dual_point_cloud(
+    #         visible_pc_file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20220525_concrete_vertical/results/final_pcs/colored_icp_visible_1.ply',
+    #         thermal_pc_file='/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20220525_concrete_vertical/results/final_pcs/colored_icp_thermal_1.ply'
+    #     )
 
-        gui.Application.instance.initialize()
-        w = VTD_Visualization(data, 
-            load_pinhole('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20220525_concrete_vertical_2/depth/camera_info.json'), 
-            'PHM Visualization Test', 1024, 768)
+    #     gui.Application.instance.initialize()
+    #     w = VTD_Visualization(data, 
+    #         load_pinhole('/home/phm/GoogleDrive/Personal/Datasets/my-dataset/multi-modal/20220525_concrete_vertical_2/depth/camera_info.json'), 
+    #         'PHM Visualization Test', 1024, 768)
 
-        # Run the event loop. This will not return until the last window is closed.
-        gui.Application.instance.run()
+    #     # Run the event loop. This will not return until the last window is closed.
+    #     gui.Application.instance.run()
 
 if __name__ == '__main__':
     unittest.main()
