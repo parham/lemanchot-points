@@ -23,6 +23,17 @@ Thermography is a Non-Destructive Testing (NDT) technology that measures the the
   <img src="resources/mme_design.png" width="800" title="Abstract View">
 </p>
 
+## Citation
+
+.... the paper will be publish soon!
+
+
+## Dataset 
+
+Dataset provided in this study, is available in Mendeley Data
+
+Nooralishahi, Parham; Pozzer, Sandra; Ramos, Gabriel (2022), “Multi-Modal Inspection of Industrial Structures v1.0”, Mendeley Data, V1, doi: 10.17632/2mt5sxp75j.1
+
 ### Multi-Modal Visualizer
 
 <p align="center">
@@ -52,10 +63,6 @@ Thermography is a Non-Destructive Testing (NDT) technology that measures the the
 <p align="center">
   <img src="resources/iteration_results.png" width="800" title="Result of Iteration Analysis">
 </p>
-
-## Dataset 
-
-Dataset provided in this study is avaliable upon request.
 
 ## Contributors
 **Parham Nooralishahi** - parham.nooralishahi@gmail.com | [@phm](https://www.linkedin.com/in/parham-nooralishahi/) <br/>
