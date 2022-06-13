@@ -17,14 +17,41 @@
 
 ## LeManchot-Fusion
 
-Thermography is a Non-Destructive Testing (NDT) technology that measures the thermal distribution of a specimen by quantifying the electromagnetic radiation emitted, reflected and transmitted at lower frequency than the visible light part of the spectrum. Despite some previous studies addressing the estimation of surface and shape characterization from multiple or single active thermograms \cite{barker1995shape,pelletier1997shape}, thermography, by nature, is a bi-dimensional sensing technology unable to provide information about the specimen's texture and geometry without any preparatory process. Thus, many studies have recently focused on using multi-modal platforms to obtain extensive information about the inspected scene. Still, data availability and algorithm implementation difficulties are faced by the analysts when performing the registration of consecutive 3D data from multiple sensors and Fields of Views (FOVs). This study presents a complete solution for multi-modal inspection of industrial components, including a processing pipeline for registering consecutive multi-modal point clouds. A comparative evaluation of optimization and learning based registration methods is provided as part of the processing pipeline. Moreover, a benchmark dataset of point cloud data from different FOVs of industrial and construction components is provided (Lemanchot-points), having 5 point clouds with depth, color, and thermal information at each point. The  experimental campaign conducted with different objects demonstrates the proposed solution's applicability for the multi-modal inspection of industrial components. 
+Thermography is a Non-Destructive Testing (NDT) technology that measures the thermal distribution of a specimen by quantifying the electromagnetic radiation emitted, reflected and transmitted at lower frequency than the visible light part of the spectrum. Despite some previous studies addressing the estimation of surface and shape characterization from multiple or single active thermograms, thermography, by nature, is a bi-dimensional sensing technology unable to provide information about the specimen's texture and geometry without any preparatory process. Thus, many studies have recently focused on using multi-modal platforms to obtain extensive information about the inspected scene. Still, data availability and algorithm implementation difficulties are faced by the analysts when performing the registration of consecutive 3D data from multiple sensors and Fields of Views (FOVs). This study presents a complete solution for multi-modal inspection of industrial components, including a processing pipeline for registering consecutive multi-modal point clouds. A comparative evaluation of optimization and learning based registration methods is provided as part of the processing pipeline. Moreover, a benchmark dataset of point cloud data from different FOVs of industrial and construction components is provided (Lemanchot-points), having 5 point clouds with depth, color, and thermal information at each point. The  experimental campaign conducted with different objects demonstrates the proposed solution's applicability for the multi-modal inspection of industrial components. 
+
+<p align="center">
+  <img src="resources/mme_design.png" width="800" title="Abstract View">
+</p>
 
 ### Multi-Modal Visualizer
 
 <p align="center">
-  <img src="resources/cli_tools.gif" width="800" title="MME Visualizer 1">
+  <img src="resources/cli_tools.gif" width="800" title="Visualization of piping inspection">
 </p>
 
+<p align="center">
+  <img src="resources/concrete_vertical.gif" width="800" title="Visualization of concrete structure">
+</p>
+
+### Noise Reduction
+
+<p align="center">
+  <img src="resources/noise_reduction.png" width="800" title="Results of Noise Reduction">
+</p>
+
+### Results
+
+<p align="center">
+  <img src="resources/metrics.png" width="800" title="Metrics">
+</p>
+
+<p align="center">
+  <img src="resources/results.png" width="800" title="Sample Results">
+</p>
+
+<p align="center">
+  <img src="resources/iteration_results.png" width="800" title="Result of Iteration Analysis">
+</p>
 
 ## Contributors
 **Parham Nooralishahi** - parham.nooralishahi@gmail.com | [@phm](https://www.linkedin.com/in/parham-nooralishahi/) <br/>
