@@ -6,7 +6,7 @@
     <img src="https://ssc.ca/sites/default/files/logo-ulaval-reseaux-sociaux.jpg" alt="Logo" width="200" height="100">
   </a>
 
-  <h3 align="center">LeManchot-Fusion</h3>
+  <h3 align="center">LeManchot-Points</h3>
 
   <p align="center">
 	The fusion subsystem of the LeManchot platform. It provides the required tools for fusion and registration of RGBD&T data.
@@ -15,7 +15,7 @@
   </p>
 </p>
 
-## LeManchot-Fusion
+## LeManchot-Points
 
 Thermography is a Non-Destructive Testing (NDT) technology that measures the thermal distribution of a specimen by quantifying the electromagnetic radiation emitted, reflected and transmitted at lower frequency than the visible light part of the spectrum. Despite some previous studies addressing the estimation of surface and shape characterization from multiple or single active thermograms, thermography, by nature, is a bi-dimensional sensing technology unable to provide information about the specimen's texture and geometry without any preparatory process. Thus, many studies have recently focused on using multi-modal platforms to obtain extensive information about the inspected scene. Still, data availability and algorithm implementation difficulties are faced by the analysts when performing the registration of consecutive 3D data from multiple sensors and Fields of Views (FOVs). This study presents a complete solution for multi-modal inspection of industrial components, including a processing pipeline for registering consecutive multi-modal point clouds. A comparative evaluation of optimization and learning based registration methods is provided as part of the processing pipeline. Moreover, a benchmark dataset of point cloud data from different FOVs of industrial and construction components is provided (Lemanchot-points), having 5 point clouds with depth, color, and thermal information at each point. The  experimental campaign conducted with different objects demonstrates the proposed solution's applicability for the multi-modal inspection of industrial components. 
 
@@ -32,7 +32,10 @@ Thermography is a Non-Destructive Testing (NDT) technology that measures the the
 
 Dataset provided in this study, is available in Mendeley Data
 
+https://data.mendeley.com/datasets/2mt5sxp75j/1
+
 Nooralishahi, Parham; Pozzer, Sandra; Ramos, Gabriel (2022), “Multi-Modal Inspection of Industrial Structures v1.0”, Mendeley Data, V1, doi: 10.17632/2mt5sxp75j.1
+
 
 ### Multi-Modal Visualizer
 
