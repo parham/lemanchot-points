@@ -40,6 +40,10 @@ Nooralishahi, Parham; Pozzer, Sandra; Ramos, Gabriel (2022), “Multi-Modal Insp
 ### Multi-Modal Visualizer
 
 <p align="center">
+  <img src="resources/pc_fusion.gif" width="800" title="Visualization of piping inspection">
+</p>
+
+<p align="center">
   <img src="resources/cli_tools.gif" width="800" title="Visualization of piping inspection">
 </p>
 
