@@ -25,7 +25,16 @@ Thermography is a Non-Destructive Testing (NDT) technology that measures the the
 
 ## Citation
 
-.... the paper will be publish soon!
+```
+@article{nooralishahi2023registration,
+  title={The registration of multi-modal point clouds for industrial inspection},
+  author={Nooralishahi, Parham and Pozzer, Sandra and Ramos, Gabriel and L{\'o}pez, Fernando and Maldague, Xavier},
+  journal={Quantitative InfraRed Thermography Journal},
+  pages={1--18},
+  year={2023},
+  publisher={Taylor \& Francis}
+}
+```
 
 
 ## Dataset 
